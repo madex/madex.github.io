@@ -134,6 +134,8 @@ Bitte versucht es selbst: *15 min*
 `if(!i)puts("hallo");`(20)  => 
 `i||puts("hallo");`(17)
 
+https://code.golf/wiki/langs/c
+
 ---
 <!-- class: lead -->
 ## Python (72/58)
