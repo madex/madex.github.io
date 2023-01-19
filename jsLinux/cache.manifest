@@ -1,0 +1,22 @@
+CACHE MANIFEST
+CACHE:
+/jslinuxstorage/cpux86-ta.js
+/jslinuxstorage/cpux86.js
+/jslinuxstorage/jslinux.js
+/jslinuxstorage/jslinux_original_disk.js
+/jslinuxstorage/simpleblockdevice.js
+/jslinuxstorage/storage.js
+/jslinuxstorage/stringbuilder.js
+/jslinuxstorage/term.js
+/jslinuxstorage/storage/diskcache.js
+/jslinuxstorage/storage/html5storage.js
+/jslinuxstorage/storage/html5storagewords.js
+/jslinuxstorage/storage/memstorage.js
+/jslinuxstorage/storage/templatestorage.js
+/jslinuxstorage/linuxstart.bin
+/jslinuxstorage/root.bin
+/jslinuxstorage/root.ext2
+/jslinuxstorage/vmlinux-3.0.4-simpleblock.bin
+/jslinuxstorage/emulator.html
+/jslinuxstorage/emulator_original_disk.html
+/jslinuxstorage/index.html
