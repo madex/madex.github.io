@@ -1,0 +1,36 @@
+<html>
+  <head>
+    <title>Rechenaufgaben für die 2. Klasse</title>
+    <style>
+      td {
+        font-family: Tahoma;
+        font-size: 18;
+        text-align: center;
+        padding: 1em;
+        width: 25%; 
+      }
+    </style>
+  </head>
+  <body>
+    <table>
+    <script>
+      for (var i = 1; i <= 64; i++) {
+        var a, b, operator, result
+        do {
+            a = Math.floor(Math.random() * 100);
+            b = Math.floor(Math.random() * 100);
+            operator = Math.random() < 0.5 ? "+" : "-";
+            result = operator == "+" ? a + b : a - b;
+        } while (result < 0 || result > 100 || a < 5 || b < 5)
+        if (i % 4 == 1) {
+            document.write("<tr>");
+        }
+        document.write("<td> " + a +" "+ operator + " "+ b + " = ______</td>");
+        if (i % 4 == 0) {
+            document.write("</tr>");
+        }
+      }
+    </script>
+    </table>
+  </body>
+</html>
