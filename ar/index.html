@@ -118,9 +118,10 @@
         function calculatePayments() {
             const totalExpense = expenses.reduce((total, expense) => total + expense.amount, 0);
             const averageExpense = totalExpense / expenses.length;
-
+            const paymentList = document.getElementById('paymentList');
             const payments = [];
-
+            
+            paymentList.innerHTML = '';
             for (const expense of expenses) {
                 const paymentAmount = averageExpense - expense.amount;
                 payments.push({ payer: expense.name, amount: paymentAmount });
@@ -147,7 +148,6 @@
                     if (transfer > 0 ) {
                         paymentListItem.textContent = `${highestPayer.payer} zahlt ${formatCurrency(transfer)} an ${receiver}.`;
                     }
-                    const paymentList = document.getElementById('paymentList');
                     paymentList.appendChild(paymentListItem);
                 }
             }
