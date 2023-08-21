@@ -7,25 +7,42 @@
     <style>
         body {
             font-family: sans-serif;
-        }       
+            margin: 3px;
+            padding: 0;
+        }
         h1, h2 {
             text-align: center;
-        } 
+            margin-top: 20px;
+        }
         #expenseForm {
             text-align: center;
-        }     
+            margin-bottom: 20px;
+        }
         ul {
             list-style-type: none;
             padding: 0;
-        }     
+        }
         li {
             margin-bottom: 8px;
         }
         input {
             font-size: medium;
         }
+        input[type="number"] {
+            max-width: 80px;
+        }
         .amount {
             max-width: 1em;
+        }
+        button {
+            display: block;
+            margin: 10px auto;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -33,7 +50,7 @@
     <h1>Ausgabenrechner</h1>
     
     <div id="expenseForm">
-        <label for="name">Name: </label>
+        <label for="name">Name:</label>
         <input type="text" id="name">
         <input type="number" id="amount" step="0.01">€
         <button onclick="addExpense()">+</button>
@@ -44,6 +61,8 @@
     
     <h2>Zahlungen</h2>
     <ul id="paymentList"></ul>
+    
+    <button id="copyPaymentsBtn" onclick="copyPayments()">Zahlungen kopieren</button>
     
     <script>
         const expenses = [];
@@ -100,7 +119,6 @@
             }
             updateUrl()
         }
-        
         function updateExpenseList() {
             const expenseList = document.getElementById('expenseList');
             expenseList.innerHTML = '';
@@ -151,6 +169,16 @@
                     paymentList.appendChild(paymentListItem);
                 }
             }
+        }
+
+        function copyPayments() {
+            const paymentListText = Array.from(document.querySelectorAll('#paymentList li')).map(item => item.textContent).join('\n');
+            const dummy = document.createElement('textarea');
+            dummy.value = paymentListText;
+            document.body.appendChild(dummy);
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
         }
     </script>
 </body>
