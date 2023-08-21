@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ausgabenrechner</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }       
+        h1, h2 {
+            text-align: center;
+        } 
+        #expenseForm {
+            text-align: center;
+        }     
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }     
+        li {
+            margin-bottom: 8px;
+        }
+        input {
+            font-size: medium;
+        }
+        .amount {
+            max-width: 1em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ausgabenrechner</h1>
+    
+    <div id="expenseForm">
+        <label for="name">Name: </label>
+        <input type="text" id="name">
+        <input type="number" id="amount" step="0.01">€
+        <button onclick="addExpense()">+</button>
+    </div>
+    
+    <h2>Ausgaben</h2>
+    <ul id="expenseList"></ul>
+    
+    <h2>Zahlungen</h2>
+    <ul id="paymentList"></ul>
+    
+    <script>
+        const expenses = [];
+        // Initialisierung beim Laden der Seite
+        window.onload = function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const savedExpenses = urlParams.get("expenses");
+            if (savedExpenses) {
+                const parsedExpenses = parseUrlExpenses(savedExpenses);
+                expenses.push(...parsedExpenses);
+                updateExpenseList();
+                calculatePayments();
+        }
+        };
+
+        function updateUrl() {
+            const encodedExpenses = encodeUrlExpenses(expenses);
+            const newUrl = `${window.location.pathname}?expenses=${encodedExpenses}`;
+            history.pushState({}, "", newUrl);
+        }
+
+        function parseUrlExpenses(encodedExpenses) {
+            const expensesArray = [];
+            const parts = encodedExpenses.split(";");
+            for (const part of parts) {
+                const [name, amount] = part.split("=")
+                    .map(item => decodeURIComponent(item));
+                expensesArray.push({ name, amount: parseFloat(amount) });
+            }
+            return expensesArray;
+        }
+
+        function encodeUrlExpenses(expensesArray) {
+            return expensesArray.map(expense =>
+                `${encodeURIComponent(expense.name)}=${encodeURIComponent(expense.amount)}`)
+                .join(";");
+        }
+
+        function addExpense() {
+            const nameInput = document.getElementById('name');
+            const amountInput = document.getElementById('amount');
+            
+            const name = nameInput.value;
+            const amount = amountInput.value === "" ? 0.0 : parseFloat(amountInput.value.replace(',', '.'));
+            if (isNaN(amount)) {
+                amount = 0.0;
+            }
+            if (name.trim() !== '') {
+                expenses.push({ name, amount });
+                nameInput.value = '';
+                amountInput.value = '';
+                updateExpenseList();
+                calculatePayments();
+            }
+            updateUrl()
+        }
+        
+        function updateExpenseList() {
+            const expenseList = document.getElementById('expenseList');
+            expenseList.innerHTML = '';
+            expenses.forEach(expense => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${expense.name}: ${formatCurrency(expense.amount)}`;
+                expenseList.appendChild(listItem);
+            });
+        }
+        
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(amount);
+        }
+        
+        function calculatePayments() {
+            const totalExpense = expenses.reduce((total, expense) => total + expense.amount, 0);
+            const averageExpense = totalExpense / expenses.length;
+
+            const payments = [];
+
+            for (const expense of expenses) {
+                const paymentAmount = averageExpense - expense.amount;
+                payments.push({ payer: expense.name, amount: paymentAmount });
+            }
+            let endless = 1000;
+            while ((payments.length > 0) && (endless > 0)) {
+                endless--;
+                payments.sort((a, b) => b.amount - a.amount);
+                const highestPayer = payments.shift();
+                const lowestReceiver = payments.pop();
+                
+                if (lowestReceiver) {
+                    receiver = lowestReceiver.payer;
+                    transfer = Math.min(-lowestReceiver.amount, highestPayer.amount);
+                    lowestReceiver.amount += transfer;
+                    highestPayer.amount -= transfer;
+                    if (lowestReceiver.amount < 0.005) {
+                        payments.push(lowestReceiver);
+                    }
+                    if (highestPayer.amount > 0.005) {
+                        payments.push(highestPayer);
+                    }
+                    const paymentListItem = document.createElement('li');
+                    if (transfer > 0 ) {
+                        paymentListItem.textContent = `${highestPayer.payer} zahlt ${formatCurrency(transfer)} an ${receiver}.`;
+                    }
+                    const paymentList = document.getElementById('paymentList');
+                    paymentList.appendChild(paymentListItem);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
