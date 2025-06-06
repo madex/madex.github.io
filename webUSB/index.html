@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>USB CDC Terminal (Hex)</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    #log { white-space: pre; background: #f8f8f8; padding: 10px; border: 1px solid #ccc; height: 250px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h2>USB CDC Terminal</h2>
+  <button id="connectBtn">Gerät verbinden</button>
+  <div id="log"></div>
+  <input id="inputData" type="text" placeholder="Hex z.B. AA 55 01" />
+  <button id="sendBtn">Senden</button>
+
+  <script>
+    let device;
+    const connectBtn = document.getElementById('connectBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const logDiv = document.getElementById('log');
+    const input = document.getElementById('inputData');
+
+    function log(msg) {
+      logDiv.textContent += msg + '\n';
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function toHex(buffer) {
+      return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0').toUpperCase())
+        .join(' ');
+    }
+
+    async function readLoop() {
+      while (device && device.opened) {
+        try {
+          const result = await device.transferIn(1, 64); // Endpoint 1 IN (anpassen bei Bedarf)
+          if (result.status === 'ok' && result.data) {
+            log('Empfangen: ' + toHex(result.data.buffer));
+          }
+        } catch (e) {
+          log('Lesefehler: ' + e.message);
+          break;
+        }
+      }
+    }
+
+    connectBtn.addEventListener('click', async () => {
+      try {
+        device = await navigator.usb.requestDevice({
+          filters: [{ vendorId: 0x0483 }]  // STM / STMicroelectronics
+        });
+
+        await device.open();
+        await device.selectConfiguration(1); // viele Geräte haben nur 1
+        await device.claimInterface(1); // Interface 1 für CDC-Daten (meistens)
+        log('Gerät verbunden: ' + device.productName);
+        readLoop();
+      } catch (err) {
+        log('Verbindungsfehler: ' + err.message);
+        console.error(err);
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      if (!device || !device.opened) return;
+      const inputVal = input.value.trim().replace(/[^0-9A-Fa-f ]/g, '');
+      const bytes = inputVal.split(/\s+/).map(x => parseInt(x, 16));
+      try {
+        await device.transferOut(2, new Uint8Array(bytes)); // Endpoint 2 OUT (anpassen)
+        log('Gesendet: ' + inputVal.toUpperCase());
+      } catch (err) {
+        log('Sende-Fehler: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
