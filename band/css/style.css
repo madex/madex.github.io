@@ -676,6 +676,7 @@ button[name=backSite] {
 
 .animatableY {
   opacity: 0;
+  font-size: 1.8vh;
   transform: translate3d(0, 3vh, 0);
   transition: all ease-in-out 1s;
 }
