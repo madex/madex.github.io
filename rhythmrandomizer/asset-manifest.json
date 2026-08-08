@@ -1,8 +1,8 @@
 {
   "files": {
-    "main.css": "/rhythmrandomizer/static/css/main.ad012564.css",
-    "main.js": "/rhythmrandomizer/static/js/main.52f5f5d4.js",
-    "static/media/release-notes.md": "/rhythmrandomizer/static/media/release-notes.6c8b7ffba5eb86741150.md",
+    "main.css": "/rhythmrandomizer/static/css/main.78af43e0.css",
+    "main.js": "/rhythmrandomizer/static/js/main.49ecdda6.js",
+    "static/media/release-notes.md": "/rhythmrandomizer/static/media/release-notes.6c51dae7e82cbf49badd.md",
     "static/media/cxqqrss.svg": "/rhythmrandomizer/static/media/cxqqrss.a3931aff1b286f5d7bdad27e7fb8cac6.svg",
     "static/media/cxeerssr.svg": "/rhythmrandomizer/static/media/cxeerssr.33df3e968401968451c6d5bdecc4b61c.svg",
     "static/media/cxqqreer.svg": "/rhythmrandomizer/static/media/cxqqreer.e3fad618284ee0ef4bf771014adbba56.svg",
@@ -67,11 +67,11 @@
     "static/media/select-none.svg": "/rhythmrandomizer/static/media/select-none.d34599824f73463d047a7a3b5bbe65c4.svg",
     "static/media/caret-right.svg": "/rhythmrandomizer/static/media/caret-right.e507a63f1cda3eb4d4cece51f36209a9.svg",
     "static/media/back-arrow.svg": "/rhythmrandomizer/static/media/back-arrow.2d0efddf95e345694e2fb96791f08ba2.svg",
-    "main.ad012564.css.map": "/rhythmrandomizer/static/css/main.ad012564.css.map",
-    "main.52f5f5d4.js.map": "/rhythmrandomizer/static/js/main.52f5f5d4.js.map"
+    "main.78af43e0.css.map": "/rhythmrandomizer/static/css/main.78af43e0.css.map",
+    "main.49ecdda6.js.map": "/rhythmrandomizer/static/js/main.49ecdda6.js.map"
   },
   "entrypoints": [
-    "static/css/main.ad012564.css",
-    "static/js/main.52f5f5d4.js"
+    "static/css/main.78af43e0.css",
+    "static/js/main.49ecdda6.js"
   ]
 }

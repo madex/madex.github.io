@@ -1,3 +1,14 @@
+## What's New in the madex Fork (Version 2.10.0-madex.1)?
+
+This is a community fork of The Rhythm Randomizer by [madex](https://github.com/madex/rhythm-randomizer-v2), hosted at [exposed-to-reality.de/rhythmrandomizer](https://www.exposed-to-reality.de/rhythmrandomizer). It adds a few practice-focused features on top of version 2.10.0:
+
+- **New playback sound:** the rhythm now plays back with a warmer, percussive bass "pluck" instead of the thin default tone.
+- **Better metronome:** a dry, percussive click with an accented downbeat, replacing the old high beep.
+- **Repeat mode:** a new button in the header cycles through how often a rhythm repeats (1×, 2×, 4×, 8×, or ∞ for endless looping until you stop).
+- **Auto mode:** the next rhythm is generated and shown greyed-out below the current one; when the current rhythm finishes (including its repeats), it advances to the next one automatically and prepares a new one — endless practice without clicking.
+
+Fork versions are numbered `X.Y.Z-madex.N`, where `X.Y.Z` tracks the upstream version and `N` counts fork releases. When upstream changes are merged, `X.Y.Z` follows the main project and `N` resets.
+
 ## What's New in Version 2.10.0?
 
 Version 1 is officially being retired, so the link is no longer in the footer, and trying to access version 1 will just redirect here. This update also includes some under-the-hood prep work for future features.
