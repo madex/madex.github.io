@@ -319,10 +319,43 @@ $(function () {
 $(function () {
     $('.facebook').on('click', function(event) {
       event.preventDefault();
-      window.location.href = "https://facebook.com/";
+      window.open("https://www.facebook.com/profile.php?id=61590934756528", "_blank", "noopener");
     });
     $('.instagram').on('click', function(event) {
       event.preventDefault();
       window.location.href = "https://www.instagram.com/";
+    });
+})
+
+// Foto gallery lightbox
+$(function () {
+    var $fotos = $('.galerie img');
+    if (!$fotos.length) { return; }
+    var current = 0;
+    function show(i) {
+      current = (i + $fotos.length) % $fotos.length;
+      $('#lightboxImg').attr('src', $fotos.eq(current).attr('src'));
+    }
+    $fotos.on('click', function () {
+      show($fotos.index(this));
+      $('#lightbox').fadeIn(200);
+    });
+    // Klick aufs Bild oder den Pfeil blättert weiter
+    $('#lightboxImg, #lightboxNext').on('click', function (event) {
+      event.stopPropagation();
+      show(current + 1);
+    });
+    $('#lightboxPrev').on('click', function (event) {
+      event.stopPropagation();
+      show(current - 1);
+    });
+    $('#lightbox, #lightboxClose').on('click', function () {
+      $('#lightbox').fadeOut(200);
+    });
+    $(document).on('keydown', function (event) {
+      if (!$('#lightbox').is(':visible')) { return; }
+      if (event.key === 'ArrowRight') { show(current + 1); }
+      else if (event.key === 'ArrowLeft') { show(current - 1); }
+      else if (event.key === 'Escape') { $('#lightbox').fadeOut(200); }
     });
 })
