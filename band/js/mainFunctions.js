@@ -360,16 +360,10 @@ $(function () {
     });
 })
 
-// ---------- Audio-Player (Our World) ----------
+// ---------- Audio-Player ----------
 $(function () {
-    var $player = $('#ourWorldPlayer');
-    if (!$player.length) { return; }
-    var audio = $player.find('audio')[0];
-    var $play = $player.find('.audioPlay');
-    var $seek = $player.find('.audioSeek');
-    var $current = $player.find('.audioCurrent');
-    var $duration = $player.find('.audioDuration');
-    var seeking = false;
+    var $players = $('.audioPlayer');
+    if (!$players.length) { return; }
 
     function fmt(sec) {
       if (!isFinite(sec)) { return '--:--'; }
@@ -377,38 +371,55 @@ $(function () {
       var s = Math.floor(sec % 60);
       return m + ':' + (s < 10 ? '0' : '') + s;
     }
-    function updateProgress() {
-      if (!audio.duration) { return; }
-      var pct = (audio.currentTime / audio.duration) * 100;
-      if (!seeking) { $seek.val(Math.round(pct * 10)); }
-      $seek.css('--progress', pct + '%');
-      $current.text(fmt(audio.currentTime));
-    }
 
-    $play.on('click', function () {
-      if (audio.paused) { audio.play(); } else { audio.pause(); }
-    });
-    $(audio).on('play', function () {
-      $player.addClass('playing');
-      $play.attr('aria-label', 'Pause');
-    });
-    $(audio).on('pause ended', function () {
-      $player.removeClass('playing');
-      $play.attr('aria-label', 'Abspielen');
-    });
-    $(audio).on('loadedmetadata durationchange', function () {
-      $duration.text(fmt(audio.duration));
-    });
-    $(audio).on('timeupdate', updateProgress);
+    $players.each(function () {
+      var $player = $(this);
+      var audio = $player.find('audio')[0];
+      var $play = $player.find('.audioPlay');
+      var $seek = $player.find('.audioSeek');
+      var $current = $player.find('.audioCurrent');
+      var $duration = $player.find('.audioDuration');
+      var seeking = false;
 
-    $seek.on('input', function () {
-      seeking = true;
-      var pct = $seek.val() / 10;
-      $seek.css('--progress', pct + '%');
-      if (audio.duration) { $current.text(fmt(audio.duration * pct / 100)); }
-    });
-    $seek.on('change', function () {
-      if (audio.duration) { audio.currentTime = audio.duration * ($seek.val() / 1000); }
-      seeking = false;
+      function updateProgress() {
+        if (!audio.duration) { return; }
+        var pct = (audio.currentTime / audio.duration) * 100;
+        if (!seeking) { $seek.val(Math.round(pct * 10)); }
+        $seek.css('--progress', pct + '%');
+        $current.text(fmt(audio.currentTime));
+      }
+
+      $play.on('click', function () {
+        if (audio.paused) {
+          // andere Player stoppen
+          $('.audioPlayer audio').not(audio).each(function () { this.pause(); });
+          audio.play();
+        } else {
+          audio.pause();
+        }
+      });
+      $(audio).on('play', function () {
+        $player.addClass('playing');
+        $play.attr('aria-label', 'Pause');
+      });
+      $(audio).on('pause ended', function () {
+        $player.removeClass('playing');
+        $play.attr('aria-label', 'Abspielen');
+      });
+      $(audio).on('loadedmetadata durationchange', function () {
+        $duration.text(fmt(audio.duration));
+      });
+      $(audio).on('timeupdate', updateProgress);
+
+      $seek.on('input', function () {
+        seeking = true;
+        var pct = $seek.val() / 10;
+        $seek.css('--progress', pct + '%');
+        if (audio.duration) { $current.text(fmt(audio.duration * pct / 100)); }
+      });
+      $seek.on('change', function () {
+        if (audio.duration) { audio.currentTime = audio.duration * ($seek.val() / 1000); }
+        seeking = false;
+      });
     });
 });
