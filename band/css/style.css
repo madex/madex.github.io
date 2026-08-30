@@ -682,6 +682,15 @@ footer .socialBanner {
   align-items: center;
   justify-content: center;
 }
+footer .legalLinks {
+  margin-top: 25px;
+  font-size: 0.9rem;
+}
+footer .legalLinks a {
+  color: white;
+  text-decoration: underline;
+  margin: 0 8px;
+}
 footer img {
   max-width: 24px;
   margin: 0 2px 0 2px;
@@ -941,8 +950,9 @@ button[name=backSite] {
     display: none;
   }
 
-  footer .socialBanner {
-    display: none;
+  footer .socialBanner img {
+    max-width: 32px;
+    margin: 0 8px;
   }
 
   section {

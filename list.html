@@ -1,19 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <title>projects of madex</title>
     <meta charset="UTF-8">
-    <meta name="description" content="">
-    <meta name="keywords" content="">
+    <title>Projekte von Madex</title>
+    <meta name="description" content="Projekte und Experimente von Martin (Madex)">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        *, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: #1A1B1D;
+            color: #9fa0ac;
+            min-height: 100vh;
+            padding: 60px 20px 80px 20px;
+        }
+        main { max-width: 900px; margin: 0 auto; }
+        h1 {
+            color: #FEFEFE;
+            font-size: 2.2rem;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        .separator {
+            width: 80px; height: 2px;
+            background-color: #F4591E;
+            margin: 25px auto 50px auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            display: block;
+            text-decoration: none;
+            background: linear-gradient(135deg, #26272b 0%, #1e1f22 100%);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            border-left: 3px solid #F4591E;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 35px rgba(0, 0, 0, 0.6);
+        }
+        .card h2 {
+            color: #FEFEFE;
+            font-size: 1.15rem;
+            margin-bottom: 10px;
+        }
+        .card p {
+            color: #9fa0ac;
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+        .card .tag {
+            display: inline-block;
+            margin-top: 15px;
+            color: #F4591E;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        footer a { color: #F4591E; }
+    </style>
 </head>
 <body>
-    <ul>
-        <li><a href="ar/">Ausgabenrechner</a></li>
-        <li><a href="Laborcache/Laborcache.htm">Laborcache</a></li>
-        <li><a href="twisted-worlds/">Backup of the webpage form my old band, www.twisted-worlds.de</a></li>
-        <li><a href="CodeGolfWorkshop/workshop.html">Code Golf Workshop in C / Labortage 2022</a></li>
-        <li><a href="Rechenaufgaben.html">Rechenaufgaben 2te Klasse ausdrucken</a></li>
-    </ul>
+    <main>
+        <h1>Projekte von Madex</h1>
+        <div class="separator"></div>
+
+        <div class="grid">
+            <a class="card" href="band/">
+                <h2>Exposed to Reality</h2>
+                <p>Website meiner Band &ndash; Crossover aus Metal, Rock und Punk mit Groove. Mit Terminen, Fotos und Songs zum Reinh&ouml;ren.</p>
+                <span class="tag">Musik</span>
+            </a>
+            <a class="card" href="rhythmrandomizer/">
+                <h2>Rhythm Randomizer</h2>
+                <p>Generiert zuf&auml;llige Rhythmen zum &Uuml;ben &ndash; mit Wiederholungs- und Auto-Modus und Sound.</p>
+                <span class="tag">Musik &middot; Tool</span>
+            </a>
+            <a class="card" href="ar/">
+                <h2>Ausgabenrechner</h2>
+                <p>Kleines Web-Tool zum Erfassen und Aufteilen von Ausgaben.</p>
+                <span class="tag">Tool</span>
+            </a>
+            <a class="card" href="Laborcache/Laborcache.htm">
+                <h2>Laborcache</h2>
+                <p>Ein Geocache-R&auml;tsel zum Kn(l)obeln. (funktioniert leider nicht)</p>
+                <span class="tag">R&auml;tsel</span>
+            </a>
+            <a class="card" href="CodeGolfWorkshop/workshop.html">
+                <h2>Code Golf Workshop</h2>
+                <p>Workshop zu Code Golf in C, gehalten auf den Labortagen 2022.</p>
+                <span class="tag">Vortrag &middot; C</span>
+            </a>
+            <a class="card" href="Rechenaufgaben.html">
+                <h2>Rechenaufgaben</h2>
+                <p>Rechenaufgaben f&uuml;r die 2. Klasse generieren und ausdrucken.</p>
+                <span class="tag">Schule &middot; Tool</span>
+            </a>
+            <a class="card" href="twisted-worlds/">
+                <h2>Twisted Worlds</h2>
+                <p>Backup der Website meiner alten Band, www.twisted-worlds.de.</p>
+                <span class="tag">Archiv</span>
+            </a>
+        </div>
+
+        <footer>
+            <p><a href="band/impressum.html">Impressum &amp; Datenschutz</a></p>
+        </footer>
+    </main>
 </body>
 </html>
-
