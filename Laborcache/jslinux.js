@@ -10,6 +10,25 @@
 
 var term, pc, boot_start_time;
 
+/* utility: asynchronous binary loader (was missing after the
+   cpux86-ta.js update to the 2013 async API) */
+function load_binary(url, cb)
+{
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "arraybuffer";
+    xhr.onload = function () {
+        if ((xhr.status === 200 || xhr.status === 0) && xhr.response) {
+            var buf = new Uint8Array(xhr.response);
+            cb(buf, buf.length);
+        } else {
+            cb(null, -1);
+        }
+    };
+    xhr.onerror = function () { cb(null, -1); };
+    xhr.send();
+}
+
 function term_start()
 {
     term = new Term(80, 30, term_handler);
@@ -52,8 +71,8 @@ function get_boot_time()
 
 function start()
 {
-    var start_addr, initrd_size, params, cmdline_addr;
-    
+    var start_addr, params, cmdline_addr;
+
     params = new Object();
 
     /* serial output chars */
@@ -70,28 +89,35 @@ function start()
 
     pc = new PCEmulator(params);
 
-    pc.load_binary("vmlinux26.bin", 0x00100000);
-
-    initrd_size = pc.load_binary("root.bin", 0x00400000);
-
     start_addr = 0x10000;
-    pc.load_binary("linuxstart.bin", start_addr);
-
-    /* set the Linux kernel command line */
-    /* Note: we don't use initramfs because it is not possible to
-       disable gzip decompression in this case, which would be too
-       slow. */
     cmdline_addr = 0xf800;
-    pc.cpu.write_string(cmdline_addr, "console=ttyS0 root=/dev/ram0 rw init=/sbin/init notsc=1");
 
-    pc.cpu.eip = start_addr;
-    pc.cpu.regs[0] = params.mem_size; /* eax */
-    pc.cpu.regs[3] = initrd_size; /* ebx */
-    pc.cpu.regs[1] = cmdline_addr; /* ecx */
+    /* the 2013 emulator API loads binaries asynchronously,
+       so chain the three loads before booting */
+    pc.load_binary("vmlinux26.bin", 0x00100000, function (kernel_size) {
+        if (kernel_size < 0) { term.writeln("Error loading vmlinux26.bin"); return; }
+        pc.load_binary("root.bin", 0x00400000, function (initrd_size) {
+            if (initrd_size < 0) { term.writeln("Error loading root.bin"); return; }
+            pc.load_binary("linuxstart.bin", start_addr, function (start_size) {
+                if (start_size < 0) { term.writeln("Error loading linuxstart.bin"); return; }
 
-    boot_start_time = (+new Date());
+                /* set the Linux kernel command line */
+                /* Note: we don't use initramfs because it is not possible to
+                   disable gzip decompression in this case, which would be too
+                   slow. */
+                pc.cpu.write_string(cmdline_addr, "console=ttyS0 root=/dev/ram0 rw init=/sbin/init notsc=1");
 
-    pc.start();
+                pc.cpu.eip = start_addr;
+                pc.cpu.regs[0] = params.mem_size; /* eax */
+                pc.cpu.regs[3] = initrd_size; /* ebx */
+                pc.cpu.regs[1] = cmdline_addr; /* ecx */
+
+                boot_start_time = (+new Date());
+
+                pc.start();
+            });
+        });
+    });
 }
 
 term_start();
