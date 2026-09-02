@@ -2,6 +2,7 @@
 <html>
 <head>
 <title>Javascript PC Emulator</title>
+<meta name="viewport" content="width=680">
 <style>
 .term {
     font-family: courier,fixed,swiss,monospace,sans-serif;
@@ -60,5 +61,39 @@ if (test_typed_arrays()) {
 <div id="copyright">&copy; 2011 Fabrice Bellard - <a href="http://bellard.org/jslinux/news.html">News</a> - <a href="http://bellard.org/jslinux/faq.html">FAQ</a> - <a href="http://bellard.org/jslinux/tech.html">Technical notes</a></div>
 <td><input type="button" value="Clear clipboard" onclick="clear_clipboard();"><br><textarea row="4" cols="16" id="text_clipboard"></textarea>
 </table>
+<input id="mobile_kbd" type="text" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" aria-hidden="true"
+       style="position:absolute; left:-9999px; top:0; width:1px; height:1px; opacity:0;">
+<script type="text/javascript">
+/* iOS/Android: Bildschirmtastatur oeffnen, wenn auf das Terminal getippt wird.
+   Die Software-Tastatur erscheint nur bei fokussiertem Eingabefeld, daher
+   wird ein unsichtbares Feld fokussiert und dessen Eingaben an das Terminal
+   weitergereicht. */
+(function() {
+    var kbd = document.getElementById("mobile_kbd");
+
+    document.addEventListener("touchend", function(e) {
+        if (e.target && e.target.closest && e.target.closest("td.term")) {
+            kbd.focus();
+        }
+    }, false);
+
+    /* Zeichen, die nicht schon ueber keypress verarbeitet wurden
+       (iOS liefert nicht immer keypress-Events) */
+    kbd.addEventListener("input", function() {
+        var v = kbd.value;
+        kbd.value = "";
+        if (v && window.term) { term.handler(v); }
+    });
+
+    /* Backspace liefert auf leerem Feld kein input-Event */
+    kbd.addEventListener("keydown", function(e) {
+        if (e.key === "Backspace") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.term) { term.handler("\x7f"); }
+        }
+    }, true);
+})();
+</script>
 </body>
 </html>
