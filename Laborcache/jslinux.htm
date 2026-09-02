@@ -62,18 +62,26 @@ if (test_typed_arrays()) {
 <td><input type="button" value="Clear clipboard" onclick="clear_clipboard();"><br><textarea row="4" cols="16" id="text_clipboard"></textarea>
 </table>
 <input id="mobile_kbd" type="text" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" aria-hidden="true"
-       style="position:absolute; left:-9999px; top:0; width:1px; height:1px; opacity:0;">
+       style="position:fixed; top:0; left:0; width:2px; height:2px; opacity:0; border:0; padding:0; font-size:16px;">
 <script type="text/javascript">
 /* iOS/Android: Bildschirmtastatur oeffnen, wenn auf das Terminal getippt wird.
    Die Software-Tastatur erscheint nur bei fokussiertem Eingabefeld, daher
    wird ein unsichtbares Feld fokussiert und dessen Eingaben an das Terminal
-   weitergereicht. */
+   weitergereicht.
+   - preventDefault im touchend: verhindert den nachlaufenden Klick, der dem
+     Feld sonst sofort wieder den Fokus nimmt (Tastatur ging direkt wieder zu)
+   - Feld liegt fixiert im Viewport mit font-size 16px: verhindert, dass iOS
+     beim Fokussieren zoomt oder zum Feld scrollt
+   - Space und Backspace werden per keydown behandelt (preventDefault stoppt
+     das Scrollen der Seite und unterdrueckt zugleich keypress/input, daher
+     keine doppelten Zeichen) */
 (function() {
     var kbd = document.getElementById("mobile_kbd");
 
     document.addEventListener("touchend", function(e) {
         if (e.target && e.target.closest && e.target.closest("td.term")) {
-            kbd.focus();
+            e.preventDefault();
+            try { kbd.focus({preventScroll: true}); } catch (ex) { kbd.focus(); }
         }
     }, false);
 
@@ -85,12 +93,14 @@ if (test_typed_arrays()) {
         if (v && window.term) { term.handler(v); }
     });
 
-    /* Backspace liefert auf leerem Feld kein input-Event */
     kbd.addEventListener("keydown", function(e) {
-        if (e.key === "Backspace") {
+        var s = null;
+        if (e.key === "Backspace") { s = "\x7f"; }
+        else if (e.key === " " || e.key === "Spacebar") { s = " "; }
+        if (s !== null) {
             e.preventDefault();
             e.stopPropagation();
-            if (window.term) { term.handler("\x7f"); }
+            if (window.term) { term.handler(s); }
         }
     }, true);
 })();
