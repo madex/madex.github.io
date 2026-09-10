@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dropdown mit kombiniertem Eingabefeld</title>
+</head>
+<body>
+    <label for="auswahl">Auswahl:</label>
+    <select id="auswahl" onchange="checkSelectedOption()">
+        <option value="auswahl1">Option 1</option>
+        <option value="auswahl2">Option 2</option>
+        <option value="auswahl3">Option 3</option>
+        <option value="manual">Manuell eingeben</option>
+    </select>
+    
+    <input type="text" id="eingabe">
+    
+    <script>
+        function checkSelectedOption() {
+            var selectBox = document.getElementById("auswahl");
+            var selectedValue = selectBox.options[selectBox.selectedIndex].value;
+            var eingabeInput = document.getElementById("eingabe");
+
+            if (selectedValue === "manual") {
+                eingabeInput.style.display = "block";
+            } else {
+                eingabeInput.style.display = "none";
+                eingabeInput.value = ""; // Zurücksetzen des Eingabefelds
+            }
+        }
+    </script>
+</body>
+</html>
