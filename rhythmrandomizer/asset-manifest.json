@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/rhythmrandomizer/static/css/main.6725a5d3.css",
-    "main.js": "/rhythmrandomizer/static/js/main.225203cb.js",
+    "main.js": "/rhythmrandomizer/static/js/main.16ea3382.js",
     "static/media/release-notes.md": "/rhythmrandomizer/static/media/release-notes.6c51dae7e82cbf49badd.md",
     "static/media/cxqqrss.svg": "/rhythmrandomizer/static/media/cxqqrss.a3931aff1b286f5d7bdad27e7fb8cac6.svg",
     "static/media/cxeerssr.svg": "/rhythmrandomizer/static/media/cxeerssr.33df3e968401968451c6d5bdecc4b61c.svg",
@@ -68,10 +68,10 @@
     "static/media/caret-right.svg": "/rhythmrandomizer/static/media/caret-right.e507a63f1cda3eb4d4cece51f36209a9.svg",
     "static/media/back-arrow.svg": "/rhythmrandomizer/static/media/back-arrow.2d0efddf95e345694e2fb96791f08ba2.svg",
     "main.6725a5d3.css.map": "/rhythmrandomizer/static/css/main.6725a5d3.css.map",
-    "main.225203cb.js.map": "/rhythmrandomizer/static/js/main.225203cb.js.map"
+    "main.16ea3382.js.map": "/rhythmrandomizer/static/js/main.16ea3382.js.map"
   },
   "entrypoints": [
     "static/css/main.6725a5d3.css",
-    "static/js/main.225203cb.js"
+    "static/js/main.16ea3382.js"
   ]
 }
