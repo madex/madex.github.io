@@ -783,6 +783,26 @@ button[name=backSite] {
 }
 
 
+.videoGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  width: 90%;
+  max-width: 1160px;
+  margin: 20px auto 0 auto;
+}
+.videoGrid iframe {
+  flex: 1 1 45%;
+  min-width: 300px;
+  max-width: 560px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+}
+
 .audioPlayer {
   display: flex;
   align-items: center;
