@@ -1068,3 +1068,131 @@ button[name=backSite] {
 }
 
 /*# sourceMappingURL=style.css.map */
+
+/* Lyrics */
+.lyrics {
+  text-align: center;
+}
+.lyricsList {
+  width: 90%;
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: left;
+}
+.lyricsCard {
+  margin: 0 0 25px 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #26272b 0%, #1e1f22 100%);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.lyricsCard summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 22px 25px;
+  cursor: pointer;
+  list-style: none;
+}
+.lyricsCard summary::-webkit-details-marker {
+  display: none;
+}
+.lyricsTitle {
+  color: #FEFEFE;
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.lyricsCard summary:hover .lyricsTitle {
+  color: #F4591E;
+}
+.lyricsChevron {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-right: 3px solid #F4591E;
+  border-bottom: 3px solid #F4591E;
+  transform: rotate(45deg);
+  transition: transform 0.25s ease;
+}
+.lyricsCard[open] .lyricsChevron {
+  margin-top: 6px;
+  transform: rotate(225deg);
+}
+.lyricsText {
+  padding: 0 25px 25px 25px;
+}
+.lyricsBlock {
+  color: #9fa0ac;
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 22px 0;
+}
+.lyricsBlock:last-of-type {
+  margin-bottom: 0;
+}
+.lyricsLabel {
+  display: block;
+  color: #F4591E;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* Vergangene Auftritte */
+.pastShows {
+  width: 90%;
+  max-width: 760px;
+  margin: 50px auto 0 auto;
+  text-align: left;
+}
+.pastShow {
+  text-align: center;
+  padding: 0 25px 30px 25px;
+}
+.pastShow p {
+  color: #9fa0ac;
+  font-weight: 700;
+  margin: 0 0 15px 0;
+}
+.pastShow img {
+  max-width: 100%;
+  width: 420px;
+  border-radius: 8px;
+}
+
+/* Drummer-gesucht-Overlay */
+.drummerBadge {
+  position: absolute;
+  top: 16%;
+  right: 5%;
+  z-index: 5;
+  display: inline-block;
+  padding: 12px 28px;
+  background: #F4591E;
+  color: #1A1B1D;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(-10deg);
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  transition: transform 0.25s ease;
+}
+.drummerBadge:hover {
+  transform: rotate(-10deg) scale(1.08);
+}
+@media screen and (max-width: 800px) {
+  .drummerBadge {
+    top: 13%;
+    right: 4%;
+    padding: 9px 18px;
+    font-size: 1rem;
+  }
+}
