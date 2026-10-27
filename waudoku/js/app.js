@@ -12,6 +12,9 @@
   const TOOL_CAP = 9;
   const DOUBLE_TAP_MS = 340;
   const STORE_KEY = 'meowdoku.save.v1';
+  // Punkte
+  const PTS_DOG = 100, PTS_COMBO = 50, PTS_HEART = 200, PTS_HINT = 50;
+  const fmtPts = (p) => p.toLocaleString('de-DE');
 
   // ---------- Spielfigur: Herr Wau ----------
   const WORDS = { nom: 'der Hund', acc: 'den Hund', indef: 'ein Hund', Indef: 'Ein Hund', negAcc: 'keinen Hund', negNom: 'kein Hund' };
@@ -121,7 +124,10 @@
     const done = !!save.daily[todayStr()];
     $('#daily-check').hidden = !done;
     const count = Object.keys(save.completed).length;
-    $('#home-stats').textContent = count ? `${count} Level gelöst · ${Object.keys(save.daily).length} tägliche Rätsel` : '';
+    const total = Object.values(save.completed).concat(Object.values(save.daily))
+      .reduce((a, v) => a + ((v && v.score) || 0), 0);
+    $('#home-stats').innerHTML = count
+      ? `<b>${fmtPts(total)} Punkte</b> · ${count} Level gelöst · ${Object.keys(save.daily).length} tägliche Rätsel` : '';
   }
 
   function renderLevels() {
@@ -191,8 +197,9 @@
         cells: saved ? Int8Array.from(saved.cells) : new Int8Array(N),
         hearts: saved ? saved.hearts : MAX_HEARTS,
         time: saved ? saved.time : 0,
-        secondChance: saved ? saved.secondChance : false,
         mistakes: saved ? saved.mistakes : 0,
+        score: saved && saved.score ? saved.score : 0,
+        scored: new Set(saved && saved.scored ? saved.scored : []),
         undo: [],
         over: false,
         streak: 0,
@@ -216,7 +223,7 @@
     else {
       save.progress[game.spec.key] = {
         cells: Array.from(game.cells), hearts: game.hearts, time: Math.floor(game.time),
-        secondChance: game.secondChance, mistakes: game.mistakes
+        mistakes: game.mistakes, score: game.score, scored: Array.from(game.scored)
       };
     }
     persist();
@@ -286,6 +293,7 @@
     }
     Array.from(hearts.children).forEach((h, k) => h.classList.toggle('lost', k >= game.hearts));
     $('#timer-pill').classList.toggle('hidden', !save.settings.timer);
+    $('#game-score').textContent = fmtPts(game.score) + ' Punkte';
     $('#timer').textContent = fmtTime(game.time);
   }
   function renderTools() {
@@ -443,6 +451,11 @@
       if (source !== 'tool') {
         game.streak++;
         if (game.streak >= 2) showCombo(Math.min(6, game.streak - 1));
+        // jeder Hund zählt nur einmal (auch nach Rückgängig)
+        if (!game.scored.has(i)) {
+          game.scored.add(i);
+          addScore(PTS_DOG + PTS_COMBO * Math.min(5, game.streak - 1));
+        }
       }
       checkWin();
     } else {
@@ -465,6 +478,13 @@
       }
     }
     saveProgress();
+  }
+
+  function addScore(pts) {
+    game.score = Math.max(0, game.score + pts);
+    renderStatus();
+    const el = $('#game-score');
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
   }
 
   function flashRule(i) {
@@ -522,6 +542,7 @@
     if (!step) return;
     save.tools.hint--;
     bumpTool('hint');
+    addScore(-PTS_HINT);
     S.play('hint');
     snapshot();
     board.classList.add('hinting');
@@ -601,15 +622,29 @@
 
     const stars = Math.max(1, game.hearts);
     const spec = game.spec;
+    // Bonus: übrige Herzen, Größe des Rätsels und Tempo
+    const par = game.n * game.n * 3;
+    const timeBonus = Math.max(0, Math.round((par - game.time) * 2));
+    const bonus = game.hearts * PTS_HEART + game.n * 50 + timeBonus;
+    game.score += bonus;
+    renderStatus();
     let reward = [];
+    let record = false;
     if (spec.daily) {
-      save.daily[spec.date] = true;
+      const prevDaily = save.daily[spec.date];
+      record = !prevDaily || game.score > (prevDaily.score || 0);
+      save.daily[spec.date] = { score: Math.max(game.score, (prevDaily && prevDaily.score) || 0) };
       save.tools.hint = Math.min(TOOL_CAP, save.tools.hint + 1);
       save.tools.locate = Math.min(TOOL_CAP, save.tools.locate + 1);
       reward = ['+1 Tipp', '+1 ' + HELPER];
     } else {
       const prev = save.completed[spec.number];
-      save.completed[spec.number] = { stars: Math.max(stars, prev ? prev.stars : 0), time: Math.min(Math.floor(game.time), prev ? prev.time : Infinity) };
+      record = !prev || game.score > (prev.score || 0);
+      save.completed[spec.number] = {
+        stars: Math.max(stars, prev ? prev.stars : 0),
+        time: Math.min(Math.floor(game.time), prev ? prev.time : Infinity),
+        score: Math.max(game.score, (prev && prev.score) || 0)
+      };
       if (!prev) {
         if (save.tools.hint < TOOL_CAP) { save.tools.hint++; reward.push('+1 Tipp'); }
         if (spec.number % 3 === 0 && save.tools.locate < TOOL_CAP) { save.tools.locate++; reward.push('+1 ' + HELPER); }
@@ -627,6 +662,9 @@
       $('#win-title').textContent = spec.daily ? 'Tagesrätsel gelöst!' : `Level ${spec.number} geschafft!`;
       $('#win-time').textContent = fmtTime(game.time);
       $('#win-hearts').textContent = `${game.hearts}/${MAX_HEARTS}`;
+      const best = spec.daily ? save.daily[spec.date].score : save.completed[spec.number].score;
+      $('#win-score').innerHTML = `${fmtPts(game.score)} Punkte<small>inkl. ${fmtPts(bonus)} Bonus · ` +
+        (record ? '<span class="record">Neuer Rekord!</span>' : `Rekord: ${fmtPts(best)}`) + '</small>';
       $('#win-stars').replaceChildren(...[0, 1, 2].map((k) => {
         const img = document.createElement('img');
         img.src = 'assets/img/star.svg'; img.alt = '';
@@ -644,7 +682,6 @@
   function showFail() {
     S.play('fail');
     $('#toast').hidden = true;
-    $('#btn-second-chance').hidden = game.secondChance;
     $('#dlg-fail').hidden = false;
     saveProgress();
   }
@@ -711,15 +748,7 @@
       startLevel(levelSpec(game.spec.number + 1));
     },
     retry: resetGame,
-    'second-chance': () => {
-      game.secondChance = true;
-      game.hearts = 1;
-      game.over = false;
-      $('#dlg-fail').hidden = true;
-      renderStatus();
-      saveProgress();
-      updateTimerRunning();
-    },
+    'open-privacy': () => openDialog('dlg-privacy'),
     'restart-level': () => confirmDialog('Level neu starten?', 'Dein aktueller Fortschritt in diesem Level geht verloren.', 'Neu starten', resetGame),
     'reset-progress': () => confirmDialog('Alles zurücksetzen?', 'Alle gelösten Level, Werkzeuge und Einstellungen werden gelöscht.', 'Zurücksetzen', () => {
       save = JSON.parse(JSON.stringify(DEFAULT_SAVE));

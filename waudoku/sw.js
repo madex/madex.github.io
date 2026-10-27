@@ -1,5 +1,5 @@
 /* WauDoku – Service Worker für Offline-Nutzung */
-const CACHE = 'waudoku-v1';
+const CACHE = 'waudoku-v2';
 const FILES = [
   './',
   'index.html',
@@ -8,6 +8,7 @@ const FILES = [
   'js/sound.js',
   'js/app.js',
   'manifest.webmanifest',
+  'assets/fonts/nunito-latin.woff2',
   'assets/img/back.svg',
   'assets/img/dog-apple-touch-icon.png',
   'assets/img/dog-icon-192.png',
@@ -59,7 +60,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
     fetch(e.request).then((res) => {
-      if (res.ok && (new URL(e.request.url).origin === location.origin || e.request.url.includes('fonts.g'))) {
+      if (res.ok && (new URL(e.request.url).origin === location.origin)) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy));
       }

@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#f7efe6">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f7efe6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#251d1a" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -12,9 +14,6 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/img/dog-icon-192.png">
   <link rel="apple-touch-icon" href="assets/img/dog-apple-touch-icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -45,6 +44,7 @@
         </div>
       </div>
       <div class="home-stats" id="home-stats"></div>
+      <button class="home-privacy" data-action="open-privacy">Datenschutz · keine Werbung, kein Tracking</button>
     </section>
 
     <!-- ================= Level-Auswahl ================= -->
@@ -61,7 +61,10 @@
     <section id="screen-game" class="screen">
       <header class="top-bar">
         <button class="round-btn" data-action="home" aria-label="Zurück"><img src="assets/img/back.svg" alt=""></button>
-        <h2 class="title" id="game-title">Level 1</h2>
+        <div class="title-block">
+          <h2 class="title" id="game-title">Level 1</h2>
+          <span class="game-score" id="game-score">0 Punkte</span>
+        </div>
         <button class="round-btn" data-action="open-settings" aria-label="Einstellungen"><img src="assets/img/settings.svg" alt=""></button>
       </header>
 
@@ -120,6 +123,7 @@
         <div class="win-word" id="win-word">Bingo!</div>
         <img class="win-cat" src="assets/img/dog_wave.webp" alt="">
         <h3 id="win-title">Level geschafft!</h3>
+        <div class="win-score" id="win-score"></div>
         <div class="win-stars" id="win-stars"></div>
         <div class="win-stats">
           <div><img src="assets/img/timer.svg" alt=""><span id="win-time">0:00</span></div>
@@ -135,9 +139,8 @@
       <div class="dialog fail">
         <img class="fail-cat" src="assets/img/dog_sad.webp" alt="">
         <h3>Keine Herzen mehr!</h3>
-        <p>Jeder falsch platzierte Hund kostet ein Herz.</p>
-        <button class="btn-primary" data-action="second-chance" id="btn-second-chance"><img src="assets/img/heart.svg" alt=""> Weiterspielen (+1)</button>
-        <button class="btn-secondary" data-action="retry">Neu starten</button>
+        <p>Jeder falsch platzierte Hund kostet ein Herz. Das Level beginnt von vorne.</p>
+        <button class="btn-primary" data-action="retry">Nochmal versuchen</button>
         <button class="btn-link" data-action="home">Zur Startseite</button>
       </div>
     </div>
@@ -172,6 +175,22 @@
           <p class="desktop-only"><b>Rechtsklick</b>: <span>Hund</span> setzen</p>
         </div>
         <button class="btn-primary" data-action="close-dialog">Los geht's!</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-privacy" hidden>
+      <div class="dialog privacy">
+        <button class="dlg-close" data-action="close-dialog" aria-label="Schließen">✕</button>
+        <h3>Datenschutz</h3>
+        <ul>
+          <li>Keine Werbung</li>
+          <li>Kein Tracking, keine Analyse-Tools</li>
+          <li>Keine Cookies, kein Konto, keine Anmeldung</li>
+          <li>Keine Daten an Dritte – auch Schrift, Bilder und Töne kommen von dieser Seite</li>
+        </ul>
+        <p>Dein Spielstand (gelöste Level, Punkte, Einstellungen) wird nur <b>lokal in deinem Browser</b> gespeichert und nie übertragen. Löschen kannst du ihn unter Einstellungen → „Fortschritt zurücksetzen“ oder über die Browserdaten.</p>
+        <p>Beim Aufruf der Seite verarbeitet der Webhoster (GitHub Pages) technisch nötige Zugriffsdaten wie die IP-Adresse. Mehr dazu im <a href="https://exposed-to-reality.de/band/impressum.html" target="_blank" rel="noopener">Impressum &amp; Datenschutz</a>.</p>
+        <button class="btn-primary" data-action="close-dialog">Alles klar</button>
       </div>
     </div>
 
