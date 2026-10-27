@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#f7efe6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="WauDoku">
+  <title>WauDoku</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/img/dog-icon-192.png">
+  <link rel="apple-touch-icon" href="assets/img/dog-apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ================= Startseite ================= -->
+    <section id="screen-home" class="screen active">
+      <div class="home-top">
+        <button class="round-btn" data-action="open-settings" aria-label="Einstellungen"><img src="assets/img/settings.svg" alt=""></button>
+      </div>
+      <div class="home-hero">
+        <img class="home-icon" src="assets/img/dog_appicon.webp" alt="">
+        <h1 class="logo"><span>Wau</span><span class="logo-doku">Doku</span></h1>
+        <p class="tagline">Finde für jede Farbe genau einen Herrn Wau</p>
+      </div>
+      <img class="home-cat" src="assets/img/dog_wave.webp" alt="">
+      <div class="home-actions">
+        <button class="btn-primary big" data-action="play">
+          <span class="btn-title">Spielen</span>
+          <span class="btn-sub" id="home-level-label">Level 1</span>
+        </button>
+        <button class="btn-secondary" data-action="daily">
+          <img src="assets/img/star.svg" alt=""> <span>Tägliches Rätsel</span><span class="daily-check" id="daily-check" hidden>✓</span>
+        </button>
+        <div class="home-row">
+          <button class="btn-ghost" data-action="open-levels">Level-Auswahl</button>
+          <button class="btn-ghost" data-action="open-rules">Spielregeln</button>
+        </div>
+      </div>
+      <div class="home-stats" id="home-stats"></div>
+    </section>
+
+    <!-- ================= Level-Auswahl ================= -->
+    <section id="screen-levels" class="screen">
+      <header class="top-bar">
+        <button class="round-btn" data-action="home" aria-label="Zurück"><img src="assets/img/back.svg" alt=""></button>
+        <h2 class="title">Level</h2>
+        <span class="round-btn placeholder"></span>
+      </header>
+      <div class="level-grid" id="level-grid"></div>
+    </section>
+
+    <!-- ================= Spiel ================= -->
+    <section id="screen-game" class="screen">
+      <header class="top-bar">
+        <button class="round-btn" data-action="home" aria-label="Zurück"><img src="assets/img/back.svg" alt=""></button>
+        <h2 class="title" id="game-title">Level 1</h2>
+        <button class="round-btn" data-action="open-settings" aria-label="Einstellungen"><img src="assets/img/settings.svg" alt=""></button>
+      </header>
+
+      <div class="status-row">
+        <div class="pill" id="cat-counter"><img src="assets/img/dog.webp" alt=""><b id="cats-found">0</b><span>/<i id="cats-total">5</i></span></div>
+        <div class="pill hearts" id="hearts"></div>
+        <div class="pill timer" id="timer-pill"><img src="assets/img/timer.svg" alt=""><span id="timer">0:00</span></div>
+      </div>
+
+      <div class="rules-wrap">
+      <div class="rules-card">
+        <div class="rule-chip" data-rule="region">1 Hund pro Farbe</div>
+        <div class="rule-chip" data-rule="line">1 Hund pro Zeile &amp; Spalte</div>
+        <div class="rule-chip" data-rule="touch">Hunde berühren sich nicht</div>
+      </div>
+      <div class="hint-banner" id="hint-banner" hidden>
+        <img src="assets/img/lamp.svg" alt="">
+        <p id="hint-text"></p>
+      </div>
+      </div>
+
+      <div class="board-area" id="board-area">
+        <div class="board-wrap" id="board-wrap">
+          <div class="board" id="board"></div>
+          <div class="combo" id="combo"></div>
+        </div>
+        <div class="difficulty-tag" id="difficulty-tag" hidden>Schwer</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="tool" data-action="undo" aria-label="Rückgängig">
+          <span class="tool-icon"><img src="assets/img/undo.svg" alt=""></span>
+          <span class="tool-label">Zurück</span>
+        </button>
+        <button class="tool" data-action="locate" aria-label="Figur finden">
+          <span class="tool-icon"><img src="assets/img/dog_happy.webp" alt=""></span>
+          <span class="badge" id="badge-locate">3</span>
+          <span class="tool-label">Hund</span>
+        </button>
+        <button class="tool" data-action="hint" aria-label="Tipp">
+          <span class="tool-icon"><img src="assets/img/lamp.svg" alt=""></span>
+          <span class="badge" id="badge-hint">3</span>
+          <span class="tool-label">Tipp</span>
+        </button>
+        <button class="tool" data-action="clear" aria-label="Markierungen löschen">
+          <span class="tool-icon broom"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M44 6l6 4-12 20-6-4z" fill="#b07a52"/><path d="M30 24l10 6c2 1 2 4 1 6l-3 5-18-11 3-5c1-2 4-2 7-1z" fill="#8a5a3c"/><path d="M19 31l19 11c-3 9-9 15-18 16-4 0-8-2-11-4 4-1 7-4 8-6-3 1-6 1-9 0 5-3 8-9 11-17z" fill="#e8a646"/><path d="M23 39l-6 14M29 42l-5 13M34 45l-4 10" stroke="#c9822a" stroke-width="2.5" stroke-linecap="round"/></svg></span>
+          <span class="tool-label">Leeren</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ================= Dialoge ================= -->
+    <div class="overlay" id="dlg-win" hidden>
+      <div class="win-rays"></div>
+      <div class="dialog win">
+        <div class="win-word" id="win-word">Bingo!</div>
+        <img class="win-cat" src="assets/img/dog_wave.webp" alt="">
+        <h3 id="win-title">Level geschafft!</h3>
+        <div class="win-stars" id="win-stars"></div>
+        <div class="win-stats">
+          <div><img src="assets/img/timer.svg" alt=""><span id="win-time">0:00</span></div>
+          <div><img src="assets/img/heart.svg" alt=""><span id="win-hearts">3</span></div>
+        </div>
+        <p class="win-reward" id="win-reward"></p>
+        <button class="btn-primary" data-action="next">Weiter</button>
+        <button class="btn-link" data-action="home">Zur Startseite</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-fail" hidden>
+      <div class="dialog fail">
+        <img class="fail-cat" src="assets/img/dog_sad.webp" alt="">
+        <h3>Keine Herzen mehr!</h3>
+        <p>Jeder falsch platzierte Hund kostet ein Herz.</p>
+        <button class="btn-primary" data-action="second-chance" id="btn-second-chance"><img src="assets/img/heart.svg" alt=""> Weiterspielen (+1)</button>
+        <button class="btn-secondary" data-action="retry">Neu starten</button>
+        <button class="btn-link" data-action="home">Zur Startseite</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-settings" hidden>
+      <div class="dialog">
+        <button class="dlg-close" data-action="close-dialog" aria-label="Schließen">✕</button>
+        <h3>Einstellungen</h3>
+        <label class="setting"><span>Soundeffekte</span><input type="checkbox" data-setting="sound"><i></i></label>
+        <label class="setting"><span>Musik</span><input type="checkbox" data-setting="music"><i></i></label>
+        <label class="setting"><span>Vibration</span><input type="checkbox" data-setting="vibrate"><i></i></label>
+        <label class="setting"><span>Auto-X <small>blockierte Felder automatisch markieren</small></span><input type="checkbox" data-setting="autoX"><i></i></label>
+        <label class="setting"><span>Timer anzeigen</span><input type="checkbox" data-setting="timer"><i></i></label>
+        <div class="setting-actions">
+          <button class="btn-secondary" data-action="restart-level" id="btn-restart">Level neu starten</button>
+          <button class="btn-link danger" data-action="reset-progress">Fortschritt zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-rules" hidden>
+      <div class="dialog rules">
+        <button class="dlg-close" data-action="close-dialog" aria-label="Schließen">✕</button>
+        <h3>So wird gespielt</h3>
+        <div class="rule"><img src="assets/img/rule_color_dog.webp" alt=""><p><b>1 Hund pro Farbe.</b> Jede Farbregion hat genau einen Hund.</p></div>
+        <div class="rule"><img src="assets/img/rule_line_dog.webp" alt=""><p><b>1 Hund pro Zeile &amp; Spalte.</b> Keine zwei Hunde in derselben Zeile oder Spalte.</p></div>
+        <div class="rule"><img src="assets/img/rule_touch_dog.webp" alt=""><p><b>Hunde berühren sich nicht</b> – auch nicht diagonal.</p></div>
+        <div class="controls-help">
+          <p><b>Tippen</b>: X markieren / entfernen</p>
+          <p><b>Doppelt tippen</b>: <span>Hund</span> setzen</p>
+          <p><b>Wischen</b>: mehrere X auf einmal</p>
+          <p class="desktop-only"><b>Rechtsklick</b>: <span>Hund</span> setzen</p>
+        </div>
+        <button class="btn-primary" data-action="close-dialog">Los geht's!</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-confirm" hidden>
+      <div class="dialog">
+        <h3 id="confirm-title">Sicher?</h3>
+        <p id="confirm-text"></p>
+        <button class="btn-primary" id="confirm-yes">Ja</button>
+        <button class="btn-link" data-action="close-dialog">Abbrechen</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

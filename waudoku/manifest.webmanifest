@@ -1,0 +1,25 @@
+{
+  "name": "WauDoku",
+  "short_name": "WauDoku",
+  "description": "Logikrätsel mit Herrn Wau – werbefrei",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7efe6",
+  "theme_color": "#f7efe6",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "assets/img/dog-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/img/dog-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
