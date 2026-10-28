@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150">
+  <ellipse cx="120" cy="138" rx="105" ry="8" fill="#000" opacity=".15"/>
+  <g transform="rotate(-8 70 95)">
+    <rect x="18" y="62" width="104" height="48" rx="16" fill="#3b82f6" stroke="#1d4ed8" stroke-width="4"/>
+    <path d="M38 62l12-20h40l12 20z" fill="#3b82f6" stroke="#1d4ed8" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M52 48h17v14H44zM75 48h14l8 14H75z" fill="#bfe3ff"/>
+    <circle cx="44" cy="112" r="12" fill="#2b3240"/><circle cx="98" cy="112" r="12" fill="#2b3240"/>
+  </g>
+  <g transform="rotate(7 170 95)">
+    <rect x="118" y="62" width="104" height="48" rx="16" fill="#ef4444" stroke="#991b1b" stroke-width="4"/>
+    <path d="M138 62l12-20h40l12 20z" fill="#ef4444" stroke="#991b1b" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M152 48h17v14h-25zM175 48h14l8 14h-22z" fill="#bfe3ff"/>
+    <circle cx="144" cy="112" r="12" fill="#2b3240"/><circle cx="198" cy="112" r="12" fill="#2b3240"/>
+  </g>
+  <g fill="#facc15" stroke="#a16207" stroke-width="2">
+    <path d="M120 10l7 16 17-4-11 13 11 13-17-4-7 16-7-16-17 4 11-13-11-13 17 4z"/>
+  </g>
+  <text x="120" y="45" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="900" font-size="18" fill="#7c2d12">!</text>
+</svg>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#eaf4ff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b2130" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BusFieber">
+  <meta name="description" content="Parkplatz-Rätsel ohne Werbung: Fahr die Autos aus dem Stau und bring alle Fahrgäste in das Fahrzeug ihrer Farbe.">
+  <title>BusFieber</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/img/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ================= Startseite ================= -->
+    <section id="screen-home" class="screen active">
+      <div class="home-top">
+        <button class="round-btn" data-action="open-settings" aria-label="Einstellungen"><img src="assets/img/settings.svg" alt=""></button>
+      </div>
+      <div class="home-hero">
+        <h1 class="logo"><span>Bus</span><span class="logo-b">Fieber</span></h1>
+        <p class="tagline">Fahr alle aus dem Stau – und jeden Fahrgast in die richtige Farbe</p>
+      </div>
+      <img class="home-art" src="assets/img/hero.svg" alt="">
+      <div class="home-actions">
+        <button class="btn-primary big" data-action="play">
+          <span class="btn-title">Spielen</span>
+          <span class="btn-sub" id="home-level-label">Level 1</span>
+        </button>
+        <button class="btn-secondary" data-action="open-rules">So wird gespielt</button>
+      </div>
+      <button class="home-privacy" data-action="open-privacy">Datenschutz · keine Werbung, kein Tracking</button>
+    </section>
+
+    <!-- ================= Spiel ================= -->
+    <section id="screen-game" class="screen">
+      <header class="top-bar">
+        <button class="round-btn" data-action="home" aria-label="Zurück"><img src="assets/img/back.svg" alt=""></button>
+        <div class="title-block">
+          <h2 class="title" id="game-title">Level 1</h2>
+          <span class="difficulty-tag" id="difficulty-tag" hidden>Schwer</span>
+        </div>
+        <button class="round-btn" data-action="open-settings" aria-label="Einstellungen"><img src="assets/img/settings.svg" alt=""></button>
+      </header>
+
+      <div class="status-row">
+        <div class="pill"><img src="assets/img/person.svg" alt=""><b id="passengers-left">0</b><span>warten</span></div>
+      </div>
+
+      <div class="stage-wrap" id="stage-wrap">
+        <canvas id="stage"></canvas>
+        <div class="crane-banner" id="crane-banner" hidden>Tippe ein Fahrzeug an – der Kran hebt es heraus</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="tool" data-action="bay" aria-label="Extra-Bucht">
+          <span class="tool-icon"><img src="assets/img/bay.svg" alt=""></span>
+          <span class="badge" id="badge-bay">0</span>
+          <span class="tool-label">Bucht +1</span>
+        </button>
+        <button class="tool" data-action="crane" aria-label="Kran">
+          <span class="tool-icon"><img src="assets/img/crane.svg" alt=""></span>
+          <span class="badge" id="badge-crane">0</span>
+          <span class="tool-label">Kran</span>
+        </button>
+        <button class="tool" data-action="sort" aria-label="Sortieren">
+          <span class="tool-icon"><img src="assets/img/sort.svg" alt=""></span>
+          <span class="badge" id="badge-sort">0</span>
+          <span class="tool-label">Sortieren</span>
+        </button>
+        <button class="tool" data-action="restart-level" aria-label="Neu starten">
+          <span class="tool-icon"><img src="assets/img/restart.svg" alt=""></span>
+          <span class="tool-label">Neu</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ================= Dialoge ================= -->
+    <div class="overlay sticky" id="dlg-win" hidden>
+      <div class="dialog">
+        <img class="dlg-art" src="assets/img/bus.svg" alt="">
+        <h3 id="win-title">Level geschafft!</h3>
+        <p class="win-reward" id="win-reward"></p>
+        <button class="btn-primary" data-action="next">Weiter</button>
+        <button class="btn-link" data-action="home">Zur Startseite</button>
+      </div>
+    </div>
+
+    <div class="overlay sticky" id="dlg-fail" hidden>
+      <div class="dialog">
+        <img class="dlg-art" src="assets/img/jam.svg" alt="">
+        <h3>Stau an der Haltestelle!</h3>
+        <p>Alle Buchten sind voll und niemand kann einsteigen.</p>
+        <button class="btn-primary" data-action="fail-bay" id="fail-bay"><img src="assets/img/bay.svg" alt=""> <span>Extra-Bucht öffnen (<span id="fail-bay-count">0</span>)</span></button>
+        <button class="btn-primary" data-action="fail-sort" id="fail-sort"><img src="assets/img/sort.svg" alt=""> <span>Sortieren (<span id="fail-sort-count">0</span>)</span></button>
+        <button class="btn-secondary" data-action="retry">Nochmal versuchen</button>
+        <button class="btn-link" data-action="home">Zur Startseite</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-settings" hidden>
+      <div class="dialog">
+        <button class="dlg-close" data-action="close-dialog" aria-label="Schließen">✕</button>
+        <h3>Einstellungen</h3>
+        <label class="setting"><span>Soundeffekte</span><input type="checkbox" data-setting="sound"><i></i></label>
+        <label class="setting"><span>Musik</span><input type="checkbox" data-setting="music"><i></i></label>
+        <label class="setting"><span>Vibration</span><input type="checkbox" data-setting="vibrate"><i></i></label>
+        <div class="setting-actions">
+          <button class="btn-secondary" data-action="restart-level" id="btn-restart">Level neu starten</button>
+          <button class="btn-link danger" data-action="reset-progress">Fortschritt zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-rules" hidden>
+      <div class="dialog rules">
+        <button class="dlg-close" data-action="close-dialog" aria-label="Schließen">✕</button>
+        <h3>So wird gespielt</h3>
+        <ol>
+          <li><b>Tippe ein Fahrzeug an.</b> Es fährt in Pfeilrichtung los – aber nur, wenn der Weg frei ist.</li>
+          <li><b>Es parkt in einer Haltebucht.</b> Die Fahrgäste steigen der Reihe nach ein, aber nur in ihre Farbe.</li>
+          <li><b>Voll? Dann fährt es ab</b> und die Bucht wird wieder frei.</li>
+          <li><b>Achtung:</b> Sind alle Buchten belegt und der vorderste Fahrgast findet keinen Platz, gibt es Stau.</li>
+        </ol>
+        <div class="help-boosters">
+          <p><img src="assets/img/bay.svg" alt=""> <b>Bucht +1</b>: eine zusätzliche Haltebucht</p>
+          <p><img src="assets/img/crane.svg" alt=""> <b>Kran</b>: hebt ein eingeparktes Fahrzeug heraus</p>
+          <p><img src="assets/img/sort.svg" alt=""> <b>Sortieren</b>: wer in ein geparktes Fahrzeug passt, kommt nach vorne</p>
+        </div>
+        <button class="btn-primary" data-action="close-dialog">Los geht's!</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dlg-privacy" hidden>
+      <div class="dialog privacy">
+        <button class="dlg-close" data-action="close-dialog" aria-label="Schließen">✕</button>
+        <h3>Datenschutz</h3>
+        <ul>
+          <li>Keine Werbung</li>
+          <li>Kein Tracking, keine Analyse-Tools</li>
+          <li>Keine Cookies, kein Konto, keine Anmeldung</li>
+          <li>Keine Daten an Dritte – auch Schrift, Bilder und Töne kommen von dieser Seite</li>
+        </ul>
+        <p>Dein Spielstand (Level, Booster, Einstellungen) wird nur <b>lokal in deinem Browser</b> gespeichert und nie übertragen. Löschen kannst du ihn unter Einstellungen → „Fortschritt zurücksetzen“ oder über die Browserdaten.</p>
+        <p>Beim Aufruf der Seite verarbeitet der Webhoster (GitHub Pages) technisch nötige Zugriffsdaten wie die IP-Adresse. Mehr dazu im <a href="https://exposed-to-reality.de/band/impressum.html" target="_blank" rel="noopener">Impressum &amp; Datenschutz</a>.</p>
+        <button class="btn-primary" data-action="close-dialog">Alles klar</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
