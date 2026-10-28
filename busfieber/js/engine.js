@@ -59,12 +59,12 @@
 
   /*
    * Erzeugt ein lösbares Level.
-   * Fahrzeuge werden nacheinander gesetzt; jedes neue Fahrzeug braucht freie Bahn
-   * gegenüber allen vorher gesetzten. In umgekehrter Reihenfolge können also alle
-   * herausfahren. Die Warteschlange entsteht, indem diese Lösung mit `bays`
+   * Fahrzeuge werden in einem Muster (Ringe, Fahrspuren) und/oder gestreut gesetzt;
+   * eine Probe-Räumung liefert eine Ausfahr-Reihenfolge (Fahrzeuge, die sich gegenseitig
+   * blockieren, fliegen raus). Die Warteschlange entsteht, indem diese Lösung mit `bays`
    * Haltebuchten durchgespielt wird – dadurch ist das Level garantiert schaffbar.
    *
-   * spec: { cols, rows, colors, count, types: {car: w, van: w, bus: w}, bays, park }
+   * spec: { cols, rows, colors, count, types: {car: w, van: w, bus: w}, layouts, gap, bays, park }
    *   park = wie viele Buchten die Lösung höchstens gleichzeitig nutzt (kleiner = leichter)
    */
   function generate(spec, seed) {
@@ -122,30 +122,115 @@
     return true;
   }
 
+  // ---------- Anordnungen der Fahrzeuge ----------
+
+  /** Streut Fahrzeuge zufällig; jedes neue braucht freie Bahn gegenüber den vorherigen. */
+  function layoutScatter(spec, rng, grid, vehicles, count) {
+    const { cols, rows } = spec;
+    for (let tries = 0; tries < 4000 && vehicles.length < count; tries++) {
+      const t = TYPES[pickWeighted(rng, spec.types)];
+      const v = { len: t.len, cap: t.cap, dir: Math.floor(rng() * 4), x: Math.floor(rng() * cols), y: Math.floor(rng() * rows) };
+      const cells = cellsOf(v);
+      if (!cells.every((c) => c.x >= 0 && c.y >= 0 && c.x < cols && c.y < rows && grid[c.y * cols + c.x] < 0)) continue;
+      if (rayOf(v, cols, rows).some((c) => grid[c.y * cols + c.x] >= 0)) continue;
+      place(v, grid, vehicles, cols);
+    }
+  }
+
+  /** Füllt eine Zellenfolge (in Fahrtrichtung) mit hintereinander stehenden Fahrzeugen. */
+  function fillLane(cells, dir, spec, rng, grid, vehicles) {
+    const { cols } = spec;
+    let i = 0;
+    while (i < cells.length) {
+      if (rng() < (spec.gap || 0)) { i++; continue; }
+      const t = TYPES[pickWeighted(rng, spec.types)];
+      if (i + t.len > cells.length) { i++; continue; }
+      const chunk = cells.slice(i, i + t.len);
+      if (chunk.some((c) => grid[c.y * cols + c.x] >= 0)) { i++; continue; }
+      const head = chunk[chunk.length - 1];
+      place({ len: t.len, cap: t.cap, dir, x: head.x, y: head.y }, grid, vehicles, cols);
+      i += t.len;
+    }
+  }
+
+  /** Ringe um die Mitte; alle Fahrzeuge eines Rings fahren im (Gegen-)Uhrzeigersinn. */
+  function layoutRings(spec, rng, grid, vehicles) {
+    const { cols, rows } = spec;
+    for (let r = 0; ; r++) {
+      const x0 = r, y0 = r, x1 = cols - 1 - r, y1 = rows - 1 - r;
+      if (x1 - x0 < 2 || y1 - y0 < 2) break;
+      const sides = [[], [], [], []]; // oben, rechts, unten, links – im Uhrzeigersinn durchlaufen
+      for (let x = x0; x < x1; x++) sides[0].push({ x, y: y0 });
+      for (let y = y0; y < y1; y++) sides[1].push({ x: x1, y });
+      for (let x = x1; x > x0; x--) sides[2].push({ x, y: y1 });
+      for (let y = y1; y > y0; y--) sides[3].push({ x: x0, y });
+      const cw = rng() < 0.5;
+      sides.forEach((cells, k) => {
+        if (cw) fillLane(cells, [1, 2, 3, 0][k], spec, rng, grid, vehicles);
+        else fillLane(cells.slice().reverse(), [3, 0, 1, 2][k], spec, rng, grid, vehicles);
+      });
+    }
+  }
+
+  /** Fahrspuren: senkrechte Spalten am Rand, dazwischen waagerechte Reihen. */
+  function layoutLanes(spec, rng, grid, vehicles) {
+    const { cols, rows } = spec;
+    const left = Math.floor(rng() * 3), right = Math.floor(rng() * 3);
+    for (let x = 0; x < cols; x++) {
+      if (x >= left && x < cols - right) continue;
+      const down = rng() < 0.5, cells = [];
+      for (let y = 0; y < rows; y++) cells.push({ x, y: down ? y : rows - 1 - y });
+      fillLane(cells, down ? 2 : 0, spec, rng, grid, vehicles);
+    }
+    for (let y = 0; y < rows; y++) {
+      const goRight = rng() < 0.5, cells = [];
+      for (let x = left; x < cols - right; x++) cells.push({ x: goRight ? x : cols - 1 - right - (x - left), y });
+      fillLane(cells, goRight ? 1 : 3, spec, rng, grid, vehicles);
+    }
+  }
+
+  function place(v, grid, vehicles, cols) {
+    v.id = vehicles.length;
+    v.type = v.len === 2 ? 'car' : v.len === 3 ? 'van' : 'bus';
+    cellsOf(v).forEach((c) => { grid[c.y * cols + c.x] = v.id; });
+    vehicles.push(v);
+  }
+
+  /**
+   * Räumt den Parkplatz probehalber leer (immer ein zufälliges freies Fahrzeug).
+   * Liefert die Ausfahr-Reihenfolge; Fahrzeuge, die sich gegenseitig blockieren, fehlen darin.
+   */
+  function peel(vehicles, cols, rows, rng) {
+    const grid = new Int16Array(cols * rows).fill(-1);
+    vehicles.forEach((v) => cellsOf(v).forEach((c) => { grid[c.y * cols + c.x] = v.id; }));
+    const left = new Set(vehicles.map((v) => v.id)), order = [];
+    for (;;) {
+      const free = vehicles.filter((v) => left.has(v.id) && !rayOf(v, cols, rows).some((c) => grid[c.y * cols + c.x] >= 0));
+      if (!free.length) break;
+      const v = free[Math.floor(rng() * free.length)];
+      left.delete(v.id); order.push(v.id);
+      cellsOf(v).forEach((c) => { grid[c.y * cols + c.x] = -1; });
+    }
+    return order;
+  }
+
   function build(spec, rng) {
     const { cols, rows } = spec;
-    let best = null;
-    for (let attempt = 0; attempt < 40; attempt++) {
-      const grid = new Int16Array(cols * rows).fill(-1);
-      const vehicles = [];
-      for (let tries = 0; tries < 3000 && vehicles.length < spec.count; tries++) {
-        const type = pickWeighted(rng, spec.types);
-        const t = TYPES[type];
-        const v = {
-          id: vehicles.length, type, len: t.len, cap: t.cap,
-          dir: Math.floor(rng() * 4),
-          x: Math.floor(rng() * cols), y: Math.floor(rng() * rows)
-        };
-        const cells = cellsOf(v);
-        if (!cells.every((c) => c.x >= 0 && c.y >= 0 && c.x < cols && c.y < rows && grid[c.y * cols + c.x] < 0)) continue;
-        if (rayOf(v, cols, rows).some((c) => grid[c.y * cols + c.x] >= 0)) continue;
-        cells.forEach((c) => { grid[c.y * cols + c.x] = v.id; });
-        vehicles.push(v);
-      }
-      if (!best || vehicles.length > best.length) best = vehicles;
-      if (vehicles.length >= spec.count) break;
-    }
-    const vehicles = best;
+    const grid = new Int16Array(cols * rows).fill(-1);
+    let vehicles = [];
+    const layout = pickWeighted(rng, spec.layouts || { scatter: 1 });
+    if (layout === 'rings') layoutRings(spec, rng, grid, vehicles);
+    else if (layout === 'lanes') layoutLanes(spec, rng, grid, vehicles);
+    // Lücken mit gestreuten Fahrzeugen auffüllen
+    layoutScatter(spec, rng, grid, vehicles, layout === 'scatter' ? spec.count : vehicles.length + Math.round(spec.count * 0.25));
+
+    // nur Fahrzeuge behalten, die auch herauskommen; IDs neu vergeben
+    let order = peel(vehicles, cols, rows, rng);
+    const keep = new Set(order);
+    vehicles = vehicles.filter((v) => keep.has(v.id));
+    const remap = new Map(vehicles.map((v, i) => [v.id, i]));
+    vehicles.forEach((v) => { v.id = remap.get(v.id); });
+    order = order.map((id) => remap.get(id));
 
     // Farben: jede Farbe mindestens einmal, Rest zufällig
     const k = Math.min(spec.colors, vehicles.length);
@@ -157,8 +242,7 @@
     }
     vehicles.forEach((v, i) => { v.color = colorList[i]; });
 
-    // Warteschlange über die Musterlösung erzeugen
-    const order = vehicles.map((v) => v.id).reverse();
+    // Warteschlange über die Musterlösung (Ausfahr-Reihenfolge) erzeugen
     const queue = [];
     const parked = []; // { id, color, left }
     const maxPark = Math.max(1, Math.min(spec.bays, spec.park));
@@ -196,9 +280,9 @@
    * Rundweg der Fahrgäste: ein „Stadion“ (Rechteck mit Halbkreisen) mit `slots` festen
    * Plätzen, die sich wie ein Förderband drehen. Halbe Breite a, halbe Höhe b (in Feldern).
    */
-  function loopShape(slots) {
-    const b = 0.8, sp = 0.62;
-    const a = Math.max(b + 0.15, (slots * sp - 2 * Math.PI * b) / 4 + b);
+  function loopShape(slots, unit = 1) {
+    const b = 0.8 * unit, sp = 0.62 * unit;
+    const a = Math.max(b + 0.15 * unit, (slots * sp - 2 * Math.PI * b) / 4 + b);
     const P = 4 * (a - b) + 2 * Math.PI * b;
     return { a, b, P, n: slots, sp: P / slots };
   }

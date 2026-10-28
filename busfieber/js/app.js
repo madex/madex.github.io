@@ -13,7 +13,7 @@
   const ARM_H = 2.6;      // wie weit die beiden Zuläufe über dem Rundweg beginnen
   const EXIT_GAP = 0.4;   // Weg vom Rundweg-Ausgang bis zu den Buchten
   const DRIVE_SPEED = 13; // Felder pro Sekunde
-  const LOOP_SPEED = 2.3; // Rundweg, Felder pro Sekunde
+  const LOOP_SPEED = 4;   // Rundweg, Felder pro Sekunde (mal Maßstab der Fahrgastzone)
   const ARM_SP = 0.62;    // Abstand der Wartenden in den Zuläufen
   const PERSON = 1.35;    // Größe der Fahrgäste
   const WALK_TIME = 0.35;
@@ -54,24 +54,25 @@
    * Jedes 10. Level ist „Schwer“: kleiner Rundweg, nur mit Planen (oder Boostern) lösbar. */
   function levelSpec(n) {
     let spec;
-    if (n === 1) spec = { cols: 5, rows: 6, colors: 2, count: 5, types: { car: 1 }, park: 2, mix: 0, loop: 14 };
-    else if (n === 2) spec = { cols: 6, rows: 7, colors: 3, count: 8, types: { car: 3, van: 1 }, park: 2, mix: 0.2, loop: 13 };
-    else if (n === 3) spec = { cols: 6, rows: 7, colors: 3, count: 10, types: { car: 3, van: 1 }, park: 3, mix: 0.3, loop: 12, target: 0.85 };
+    const small = { car: 3, van: 2 };
+    if (n === 1) spec = { cols: 6, rows: 7, colors: 2, count: 6, types: { car: 1 }, layouts: { scatter: 1 }, park: 2, mix: 0, loop: 14 };
+    else if (n === 2) spec = { cols: 7, rows: 8, colors: 3, count: 10, types: small, layouts: { scatter: 1 }, park: 2, mix: 0.2, loop: 14 };
+    else if (n === 3) spec = { cols: 8, rows: 9, colors: 3, count: 14, types: small, layouts: { rings: 1 }, gap: 0.25, park: 3, mix: 0.3, loop: 13, target: 0.85 };
     else {
       const t = Math.min(1, (n - 4) / 30);
-      const cols = n < 6 ? 6 : n < 16 ? 7 : n < 35 ? 8 : 9;
-      const rows = n < 6 ? 8 : n < 16 ? 9 : n < 35 ? 10 : 11;
-      const types = n < 5 ? { car: 3, van: 1 } : { car: 4, van: 2, bus: 1 };
-      const avgLen = n < 5 ? 2.25 : 2.43;
+      const cols = n < 8 ? 8 : n < 20 ? 9 : n < 40 ? 10 : 11;
+      const rows = n < 8 ? 10 : n < 20 ? 11 : n < 40 ? 13 : 14;
       spec = {
-        cols, rows, types,
+        cols, rows, types: small,
+        layouts: { rings: 3, lanes: 3, scatter: 2 },
+        gap: 0.22 - 0.14 * t,
         colors: Math.min(8, 4 + Math.floor((n - 4) / 5)),
-        count: Math.round(cols * rows * (0.58 + 0.17 * t) / avgLen),
+        count: Math.round(cols * rows * (0.45 + 0.2 * t) / 2.4),
         park: n < 5 ? 3 : 4,
         mix: 0.45 + 0.4 * t,
         lifo: 0.4 + 0.6 * t,
         parkRate: 0.6 + 0.3 * t,
-        loop: Math.round(11 - 4 * t),
+        loop: Math.round(13 - 5 * t),
         target: 0.75 - 0.55 * t
       };
     }
@@ -143,7 +144,8 @@
       // Zuläufe: abwechselnd links/rechts, damit die Reihenfolge der Schlange erhalten bleibt
       arms: [lvl.queue.filter((_, i) => i % 2 === 0), lvl.queue.filter((_, i) => i % 2 === 1)],
       armShift: [0, 0], nextArm: 0,
-      loop: E.loopShape(lvl.loop), slots: null, phase: 0,
+      unit: Math.max(1, (lvl.cols + 2) / 9),
+      loop: E.loopShape(lvl.loop, Math.max(1, (lvl.cols + 2) / 9)), slots: null, phase: 0,
       walkers: [],
       time: 0, stuck: 0,
       over: false, crane: false, bayFlash: 0
@@ -172,7 +174,7 @@
   const bayW = () => (G.cols + 2) / nBaysShown();
   const bayCenter = (i) => ({ x: -1 + bayW() * (i + 0.5), y: -1 - BAY_H / 2 });
   // Rundweg über den Buchten: Ausgang unten in der Mitte, Zuläufe links und rechts
-  const loopCenter = () => ({ x: G.cols / 2, y: -1 - BAY_H - EXIT_GAP - G.loop.b });
+  const loopCenter = () => ({ x: G.cols / 2, y: -1 - BAY_H - EXIT_GAP * G.unit - G.loop.b });
   /** Punkt auf dem Rundweg; s = 0 ist der Ausgang unten, dann im Uhrzeigersinn. */
   function loopPoint(s) {
     const { a, b, P } = G.loop, c = loopCenter(), h = a - b;
@@ -190,8 +192,8 @@
   const mergeS = (side) => { const { a, b } = G.loop, h = a - b; return side === 0 ? h + Math.PI * b / 2 : 3 * h + 1.5 * Math.PI * b; };
   /** Zulauf als Linienzug vom Einmündungspunkt nach außen/oben. */
   function armPath(side) {
-    const m = loopPoint(mergeS(side)), top = loopCenter().y - G.loop.b - ARM_H;
-    const x = side === 0 ? -0.55 : G.cols + 0.55;
+    const m = loopPoint(mergeS(side)), top = loopCenter().y - G.loop.b - ARM_H * G.unit;
+    const x = side === 0 ? -1 + 0.45 * G.unit : G.cols + 1 - 0.45 * G.unit;
     return [m, { x, y: m.y }, { x, y: top }];
   }
   function alongPath(pts, d) {
@@ -400,7 +402,7 @@
     }
     // Rundweg dreht sich; an den Zuläufen steigen Wartende zu, am Ausgang aus
     if (!G.over) {
-      const { P, sp } = G.loop, adv = LOOP_SPEED * dt;
+      const { P, sp } = G.loop, adv = LOOP_SPEED * G.unit * dt;
       const prev = G.phase;
       G.phase = (G.phase + adv) % P;
       const crossed = (point, k) => ((point - (prev + k * sp)) % P + 2 * P) % P < adv;
@@ -428,7 +430,7 @@
         }
       }
     }
-    for (const side of [0, 1]) G.armShift[side] = Math.max(0, G.armShift[side] - dt * 2.2);
+    for (const side of [0, 1]) G.armShift[side] = Math.max(0, G.armShift[side] - dt * 3);
     for (const w of G.walkers) {
       w.t += dt / WALK_TIME;
       if (w.t >= 1 && !w.done) {
@@ -557,7 +559,7 @@
   const pal = () => (dark.matches ? PAL_DARK : PAL_LIGHT);
 
   function worldBounds() {
-    return { x0: -1, x1: G.cols + 1, y0: loopCenter().y - G.loop.b - ARM_H - 0.2, y1: G.rows + 1 };
+    return { x0: -1, x1: G.cols + 1, y0: loopCenter().y - G.loop.b - (ARM_H + 0.2) * G.unit, y1: G.rows + 1 };
   }
   function resize() {
     if (!G) return;
@@ -606,8 +608,8 @@
       if (ctx.roundRect) ctx.roundRect(c0.x - lp.a, c0.y - lp.b, lp.a * 2, lp.b * 2, lp.b); else ctx.rect(c0.x - lp.a, c0.y - lp.b, lp.a * 2, lp.b * 2);
       ctx.stroke();
     };
-    walkway(0.86, P.walkEdge);
-    walkway(0.74, P.walk);
+    walkway(0.86 * G.unit, P.walkEdge);
+    walkway(0.74 * G.unit, P.walk);
 
     // Haltebuchten
     const bayTop = -1 - BAY_H, bw = bayW();
@@ -658,35 +660,36 @@
     for (const side of [0, 1]) {
       const pts = armPath(side), arm = G.arms[side];
       const total = pts.reduce((acc, p, i) => acc + (i ? Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) : 0), 0);
-      const show = Math.min(arm.length, Math.floor((total - 0.2) / ARM_SP) + 1);
+      const sp = ARM_SP * G.unit;
+      const show = Math.min(arm.length, Math.floor((total - 0.2 * G.unit) / sp) + 1);
       for (let k = show - 1; k >= 0; k--) {
-        const p = alongPath(pts, 0.3 + k * ARM_SP + G.armShift[side]);
-        drawPerson(p.x, p.y, G.lvl.colors[arm[k]], PERSON);
+        const p = alongPath(pts, (0.3 + k * ARM_SP + G.armShift[side]) * G.unit);
+        drawPerson(p.x, p.y, G.lvl.colors[arm[k]], PERSON * G.unit);
       }
       if (arm.length > show) {
         const p = pts[pts.length - 1];
-        drawBubble(p.x, p.y + 0.05, '+' + (arm.length - show));
+        drawBubble(p.x, p.y + 0.05, '+' + (arm.length - show), G.unit);
       }
     }
     // Rundweg
     for (let k = 0; k < G.slots.length; k++) {
       if (G.slots[k] < 0) continue;
       const p = loopPoint(G.phase + k * G.loop.sp);
-      drawPerson(p.x, p.y, G.lvl.colors[G.slots[k]], PERSON);
+      drawPerson(p.x, p.y, G.lvl.colors[G.slots[k]], PERSON * G.unit);
     }
     for (const w of G.walkers) {
       const v = G.vehicles[w.vid], t = Math.min(1, w.t);
       const e = t * t * (3 - 2 * t);
       const x = w.from.x + (v.px - w.from.x) * e, y = w.from.y + (v.py - w.from.y) * e - Math.sin(t * Math.PI) * 0.3;
-      drawPerson(x, y, G.lvl.colors[w.color], PERSON * (1 - t * 0.45));
+      drawPerson(x, y, G.lvl.colors[w.color], PERSON * G.unit * (1 - t * 0.45));
     }
   }
 
-  function drawBubble(x, y, text) {
-    ctx.font = '900 0.34px Nunito, sans-serif';
-    const w = ctx.measureText(text).width + 0.24;
+  function drawBubble(x, y, text, u) {
+    ctx.font = `900 ${0.34 * u}px Nunito, sans-serif`;
+    const w = ctx.measureText(text).width + 0.24 * u;
     ctx.fillStyle = 'rgba(30,41,59,.85)';
-    rr(x - w / 2, y - 0.22, w, 0.44, 0.22); ctx.fill();
+    rr(x - w / 2, y - 0.22 * u, w, 0.44 * u, 0.22 * u); ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(text, x, y + 0.01);
