@@ -9,19 +9,23 @@
 
   const STORE_KEY = 'busfieber.save.v1';
   const BOOSTER_CAP = 9;
-  const BAY_H = 2.4;      // Höhe der Haltebuchten (in Feldern)
-  const ARM_H = 2.6;      // wie weit die beiden Zuläufe über dem Rundweg beginnen
-  const EXIT_GAP = 0.4;   // Weg vom Rundweg-Ausgang bis zu den Buchten
-  const DRIVE_SPEED = 13; // Felder pro Sekunde
-  const LOOP_SPEED = 4;   // Rundweg, Felder pro Sekunde (mal Maßstab der Fahrgastzone)
-  const ARM_SP = 0.62;    // Abstand der Wartenden in den Zuläufen
-  const PERSON = 1.35;    // Größe der Fahrgäste
-  const WALK_TIME = 0.35;
+  const BAY_H = 2.7;      // Höhe der Haltebuchten samt Platz-Anzeige
+  const ARM_H = 3.6;      // wie weit die Zuläufe über dem Rundweg beginnen (mal Maßstab)
+  const EXIT_GAP = 0.35;  // Weg vom Rundweg-Ausgang bis zu den Buchten
+  const DRIVE_SPEED = 13; // Einheiten pro Sekunde
+  const LOOP_SPEED = 2.6; // Rundweg (mal Maßstab der Fahrgastzone)
+  const LANES = 3;        // Fahrgäste nebeneinander in den Zuläufen
+  const LOOP_LANES = 2;   // … und auf dem Rundweg
+  const LANE_W = 0.34;    // Abstand der Spuren (mal Maßstab)
+  const ARM_SP = 0.4;     // Abstand der Reihen in den Zuläufen (mal Maßstab)
+  const PERSON = 0.62;    // Größe der Fahrgäste (mal Maßstab)
+  const WALK_TIME = 0.32;
+  const EXTRA_BAYS = 3;   // gesperrte Buchten, die man mit „Bucht +1“ öffnet
 
   // ---------- Speicherstand ----------
   const DEFAULT_SAVE = {
     level: 1,
-    boosters: { bay: 2, crane: 2, sort: 2 },
+    boosters: { bay: 2, vip: 2, sort: 2 },
     settings: { sound: true, music: false, vibrate: true },
     rulesSeen: false
   };
@@ -31,9 +35,13 @@
       const raw = localStorage.getItem(STORE_KEY);
       if (raw) {
         const s = JSON.parse(raw);
+        const boosters = Object.assign({}, DEFAULT_SAVE.boosters, s.boosters);
+        // früher hieß der VIP-Booster „Kran“
+        if (s.boosters && s.boosters.crane !== undefined && s.boosters.vip === undefined) boosters.vip = s.boosters.crane;
+        delete boosters.crane;
         return Object.assign({}, DEFAULT_SAVE, s, {
           settings: Object.assign({}, DEFAULT_SAVE.settings, s.settings),
-          boosters: Object.assign({}, DEFAULT_SAVE.boosters, s.boosters)
+          boosters
         });
       }
     } catch (e) { /* privater Modus o. ä. */ }
@@ -44,42 +52,47 @@
   }
 
   // ---------- Level-Definition ----------
-  /* Level 1–3 führen ein, danach wird es schnell anspruchsvoller.
+  /* Level 1–3 führen ein (ein Zulauf), danach zwei Zuläufe und Figuren aus Fahrzeugen.
+   *   shape  = Figur des Parkplatzes, angles = wie die Fahrzeuge gedreht sind, sym = spiegelsymmetrisch
    *   park   = wie viele Buchten die Musterlösung gleichzeitig braucht (von 4)
    *   mix    = wie stark die Farben in der Schlange durcheinander sind
    *   lifo   = Schlange bedient bevorzugt die zuletzt freigeräumten Fahrzeuge (engine.js)
-   *   loop   = Plätze im Rundweg (weniger = weniger Puffer)
+   *   loop   = Plätze im Rundweg in Vierergruppen (weniger = weniger Puffer)
    *   target = Gewinnquote eines Spielers, der nicht vorausplant (siehe engine.js)
    * Normale Level sind mit Vorausschauen immer schaffbar (greedy: true).
-   * Jedes 10. Level ist „Schwer“: kleiner Rundweg, nur mit Planen (oder Boostern) lösbar. */
+   * Jedes 10. Level ist „Schwer“, jedes Level x5 eine Verschnaufpause. */
   function levelSpec(n) {
     let spec;
-    const small = { car: 3, van: 2 };
-    if (n === 1) spec = { cols: 6, rows: 7, colors: 2, count: 6, types: { car: 1 }, layouts: { scatter: 1 }, park: 2, mix: 0, loop: 14 };
-    else if (n === 2) spec = { cols: 7, rows: 8, colors: 3, count: 10, types: small, layouts: { scatter: 1 }, park: 2, mix: 0.2, loop: 14 };
-    else if (n === 3) spec = { cols: 8, rows: 9, colors: 3, count: 14, types: small, layouts: { rings: 1 }, gap: 0.25, park: 3, mix: 0.3, loop: 13, target: 0.85 };
+    const SHAPE_ORDER = ['rect', 'cross', 'heart', 'diamond', 'columns', 'circle', 'hourglass', 'ring', 'flower', 'arch'];
+    const ANGLES = ['grid', 'free', 'mixed', 'tilt'];
+    if (n === 1) spec = { w: 6, h: 5, colors: 2, count: 5, types: { car: 1 }, shape: 'rect', angles: 'grid', arms: 1, park: 2, mix: 0, loop: 10 };
+    else if (n === 2) spec = { w: 7, h: 6, colors: 3, count: 10, types: { car: 3, van: 1 }, shape: 'circle', angles: 'grid', arms: 1, park: 2, mix: 0.2, loop: 10 };
+    else if (n === 3) spec = { w: 9, h: 9, colors: 3, count: 22, types: { car: 3, van: 2 }, shape: 'cross', angles: 'grid', sym: true, arms: 1, park: 3, mix: 0.3, loop: 9, target: 0.85 };
     else {
       const t = Math.min(1, (n - 4) / 30);
-      const cols = n < 8 ? 8 : n < 20 ? 9 : n < 40 ? 10 : 11;
-      const rows = n < 8 ? 10 : n < 20 ? 11 : n < 40 ? 13 : 14;
+      const w = n < 8 ? 10 : n < 20 ? 11 : 12, h = n < 8 ? 10 : n < 20 ? 11 : 12;
       spec = {
-        cols, rows, types: small,
-        layouts: { rings: 3, lanes: 3, scatter: 2 },
-        gap: 0.22 - 0.14 * t,
+        w, h, types: { car: 4, van: 3, bus: 1 },
+        shape: SHAPE_ORDER[(n - 4) % SHAPE_ORDER.length],
+        angles: ANGLES[n % ANGLES.length],
+        sym: n % 3 === 0,
+        count: Math.round(34 + 26 * t),
         colors: Math.min(8, 4 + Math.floor((n - 4) / 5)),
-        count: Math.round(cols * rows * (0.45 + 0.2 * t) / 2.4),
+        arms: 2,
         park: n < 5 ? 3 : 4,
         mix: 0.45 + 0.4 * t,
         lifo: 0.4 + 0.6 * t,
         parkRate: 0.6 + 0.3 * t,
-        loop: Math.round(13 - 5 * t),
+        loop: Math.round(9 - 4 * t),
         target: 0.75 - 0.55 * t
       };
+      // Verschnaufpause nach dem Sprung: wenige Fahrzeuge, wie im Original
+      if (n % 10 === 5) { spec.count = Math.round(spec.count * 0.4); spec.target = 0.9; spec.shape = 'rect'; spec.angles = 'free'; }
     }
     spec.bays = 4;
     spec.greedy = true;
     spec.hard = n >= 10 && n % 10 === 0;
-    if (spec.hard) { spec.park = 4; spec.loop = Math.max(6, spec.loop - 2); spec.mix = 0.9; spec.lifo = 1; spec.parkRate = 0.9; spec.target = 0.03; spec.greedy = undefined; }
+    if (spec.hard) { spec.park = 4; spec.loop = Math.max(4, spec.loop - 2); spec.mix = 0.9; spec.lifo = 1; spec.parkRate = 0.9; spec.target = 0.03; spec.greedy = undefined; }
     spec.number = n;
     spec.seed = E.hashString('busfieber-level-' + n);
     return spec;
@@ -132,33 +145,29 @@
     hideSticky();
     const spec = levelSpec(n);
     const lvl = E.generate(spec, spec.seed);
+    const unit = Math.max(1, (lvl.w + 2) / 9);
+    const rows = Math.ceil(lvl.loop * E.GROUP / LOOP_LANES);
+    const { arms, seq } = splitArms(lvl.queue, lvl.arms);
     G = {
-      spec, lvl, cols: lvl.cols, rows: lvl.rows,
-      grid: new Int16Array(lvl.cols * lvl.rows).fill(-1),
+      spec, lvl, w: lvl.w, h: lvl.h, unit,
       vehicles: lvl.vehicles.map((v) => Object.assign({}, v, {
-        state: 'lot', seats: 0, reserved: 0, bay: -1, arrived: 0, ang: v.dir * Math.PI / 2,
-        scale: 1, alpha: 1, bump: null, shake: 0, path: null
+        state: 'lot', seats: 0, reserved: 0, bay: -1, arrived: 0, px: v.x, py: v.y,
+        scale: 1, alpha: 1, bump: null, shake: 0, leg: null
       })),
-      bays: Array.from({ length: lvl.bays }, () => ({ vid: -1 })),
-      extraUsed: false,
-      // Zuläufe: abwechselnd links/rechts, damit die Reihenfolge der Schlange erhalten bleibt
-      arms: [lvl.queue.filter((_, i) => i % 2 === 0), lvl.queue.filter((_, i) => i % 2 === 1)],
-      armShift: [0, 0], nextArm: 0,
-      unit: Math.max(1, (lvl.cols + 2) / 9),
-      loop: E.loopShape(lvl.loop, Math.max(1, (lvl.cols + 2) / 9)), slots: null, phase: 0,
+      // Bucht 0 = VIP (nur per Booster), dann 4 normale, dann gesperrte
+      bays: [{ kind: 'vip', vid: -1 }]
+        .concat(Array.from({ length: lvl.bays }, () => ({ kind: 'normal', vid: -1 })))
+        .concat(Array.from({ length: EXTRA_BAYS }, () => ({ kind: 'locked', vid: -1 }))),
+      arms, seq, seqIdx: 0, takeCount: 0, armTaken: [0, 0], armSmooth: [0, 0],
+      loop: E.loopShape(rows, unit), slots: new Array(rows * LOOP_LANES).fill(-1), phase: 0,
       walkers: [],
-      time: 0, stuck: 0,
-      over: false, crane: false, bayFlash: 0
+      time: 0, stuck: 0, mood: 0,
+      over: false, vip: false, bayFlash: 0
     };
-    G.slots = new Array(G.loop.n).fill(-1);
-    for (const v of G.vehicles) {
-      for (const c of E.cellsOf(v)) G.grid[c.y * G.cols + c.x] = v.id;
-      const p = lotCenter(v);
-      v.px = p.x; v.py = p.y;
-    }
     $('#game-title').textContent = 'Level ' + n;
     $('#difficulty-tag').hidden = !spec.hard;
-    setCrane(false);
+    setVip(false);
+    spriteCache.clear();
     renderStatus();
     renderBoosters();
     resize();
@@ -166,15 +175,27 @@
     if (!save.rulesSeen) { save.rulesSeen = true; persist(); openDialog('dlg-rules'); }
   }
 
-  function lotCenter(v) {
-    const d = E.DIRS[v.dir], back = (v.len - 1) / 2;
-    return { x: v.x + 0.5 - d.dx * back, y: v.y + 0.5 - d.dy * back };
+  /*
+   * Gruppen in Personen auflösen. Bei zwei Zuläufen wechselt der Zulauf mit jeder neuen
+   * Farbe, so bleiben Farbblöcke zusammen; seq merkt sich für jede Gruppe ihren Zulauf,
+   * damit die Fahrgäste genau in Reihenfolge der Schlange auf den Rundweg kommen.
+   */
+  function splitArms(groups, nArms) {
+    const arms = [[], []], seq = [];
+    let side = 1;
+    groups.forEach((c, g) => {
+      if (nArms === 2 && g > 0 && c !== groups[g - 1]) side = 1 - side;
+      seq.push(side);
+      for (let k = 0; k < E.GROUP; k++) arms[side].push(c);
+    });
+    return { arms, seq };
   }
-  const nBaysShown = () => G.lvl.bays + 1;
-  const bayW = () => (G.cols + 2) / nBaysShown();
-  const bayCenter = (i) => ({ x: -1 + bayW() * (i + 0.5), y: -1 - BAY_H / 2 });
+
+  const bayW = () => (G.w + 2) / G.bays.length;
+  const bayTop = () => -1 - BAY_H;
+  const bayCenter = (i) => ({ x: -1 + bayW() * (i + 0.5), y: bayTop() + (BAY_H - 0.55) / 2 + 0.05 });
   // Rundweg über den Buchten: Ausgang unten in der Mitte, Zuläufe links und rechts
-  const loopCenter = () => ({ x: G.cols / 2, y: -1 - BAY_H - EXIT_GAP * G.unit - G.loop.b });
+  const loopCenter = () => ({ x: G.w / 2, y: bayTop() - EXIT_GAP * G.unit - G.loop.b - LANE_W * G.unit });
   /** Punkt auf dem Rundweg; s = 0 ist der Ausgang unten, dann im Uhrzeigersinn. */
   function loopPoint(s) {
     const { a, b, P } = G.loop, c = loopCenter(), h = a - b;
@@ -189,56 +210,81 @@
     s -= Math.PI * b;
     return { x: c.x + h - s, y: c.y + b };
   }
-  const mergeS = (side) => { const { a, b } = G.loop, h = a - b; return side === 0 ? h + Math.PI * b / 2 : 3 * h + 1.5 * Math.PI * b; };
-  /** Zulauf als Linienzug vom Einmündungspunkt nach außen/oben. */
-  function armPath(side) {
-    const m = loopPoint(mergeS(side)), top = loopCenter().y - G.loop.b - ARM_H * G.unit;
-    const x = side === 0 ? -1 + 0.45 * G.unit : G.cols + 1 - 0.45 * G.unit;
-    return [m, { x, y: m.y }, { x, y: top }];
+  /** Platz einer Spur: seitlich versetzt (Spur 0 innen, LANES-1 außen). */
+  function lanePoint(s, lane) {
+    const p = loopPoint(s), q = loopPoint(s + 0.05), tx = q.x - p.x, ty = q.y - p.y, l = Math.hypot(tx, ty) || 1;
+    const off = (lane - (LOOP_LANES - 1) / 2) * LANE_W * G.unit;
+    // im Uhrzeigersinn zeigt (-ty, tx) nach außen
+    return { x: p.x - ty / l * off, y: p.y + tx / l * off };
   }
-  function alongPath(pts, d) {
+  const mergeS = (side) => { const { a, b } = G.loop, h = a - b; return side === 0 ? h + Math.PI * b / 2 : 3 * h + 1.5 * Math.PI * b; };
+  const usedArms = () => (G.lvl.arms === 1 ? [1] : [0, 1]);
+  /** Zulauf als geschwungene Linie vom Einmündungspunkt nach außen und oben. */
+  function armPath(side) {
+    if (G['arm' + side]) return G['arm' + side];
+    const u = G.unit, m = loopPoint(mergeS(side));
+    const top = loopCenter().y - G.loop.b - ARM_H * u;
+    const sgn = side === 0 ? -1 : 1;
+    const ex = side === 0 ? -1 + 0.8 * u : G.w + 1 - 0.8 * u;
+    const P0 = { x: m.x + sgn * LANE_W * u, y: m.y }, P1 = { x: ex, y: m.y + 0.2 * u }, P2 = { x: ex, y: m.y - 1.8 * u }, P3 = { x: ex - sgn * 1.1 * u, y: top + 0.6 * u };
+    const pts = [];
+    for (let k = 0; k <= 20; k++) {
+      const t = k / 20, a = (1 - t) ** 3, b = 3 * (1 - t) ** 2 * t, c = 3 * (1 - t) * t * t, d = t ** 3;
+      pts.push({ x: a * P0.x + b * P1.x + c * P2.x + d * P3.x, y: a * P0.y + b * P1.y + c * P2.y + d * P3.y });
+    }
+    pts.push({ x: P3.x, y: top });
+    G['arm' + side] = pts;
+    return pts;
+  }
+  /** Punkt in Abstand d entlang des Linienzugs, seitlich um off versetzt. */
+  function alongPath(pts, d, off = 0) {
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1], b = pts[i], len = Math.hypot(b.x - a.x, b.y - a.y);
-      if (d <= len || i === pts.length - 1) { const t = Math.min(1, d / len); return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
+      if (d <= len || i === pts.length - 1) {
+        const t = Math.min(1, d / len), nx = -(b.y - a.y) / len, ny = (b.x - a.x) / len;
+        return { x: a.x + (b.x - a.x) * t + nx * off, y: a.y + (b.y - a.y) * t + ny * off };
+      }
       d -= len;
     }
     return pts[pts.length - 1];
   }
+  const pathLen = (pts) => pts.reduce((acc, p, i) => acc + (i ? Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) : 0), 0);
   const passengersLeft = () => G.arms[0].length + G.arms[1].length + G.slots.filter((c) => c >= 0).length + G.walkers.length;
-  const parkScale = (v) => Math.min(1, (BAY_H - 0.35) / v.len, (bayW() - 0.12) / 0.8);
+  const parkScale = (v) => Math.min(1, (BAY_H - 0.85) / v.len, (bayW() - 0.18) / v.width);
 
   function renderStatus() {
     $('#passengers-left').textContent = passengersLeft();
   }
   function renderBoosters() {
-    for (const k of ['bay', 'crane', 'sort']) {
+    for (const k of ['bay', 'vip', 'sort']) {
       const b = $('#badge-' + k), v = save.boosters[k];
       b.textContent = v;
       b.classList.toggle('empty', v <= 0);
     }
-    $('[data-action="bay"]').classList.toggle('disabled', !G || G.extraUsed || save.boosters.bay <= 0);
+    $('[data-action="bay"]').classList.toggle('disabled', !G || lockedBay() < 0 || save.boosters.bay <= 0);
   }
 
   // ---------- Fahrzeuge bewegen ----------
+  const inLot = (v) => v.state === 'lot';
   function firstBlocker(v) {
-    const ray = E.rayOf(v, G.cols, G.rows);
-    for (let k = 0; k < ray.length; k++) {
-      const id = G.grid[ray[k].y * G.cols + ray[k].x];
-      if (id >= 0) return { dist: k, id };
+    let best = null;
+    for (const id of G.lvl.blockers[v.id]) {
+      const o = G.vehicles[id];
+      if (!inLot(o)) continue;
+      const gap = E.gapTo(v, o);
+      if (!best || gap < best.dist) best = { id, dist: gap };
     }
-    return null;
+    return best;
   }
-  function freeBay() { return G.bays.findIndex((b) => b.vid < 0); }
-  function liftFromLot(v) {
-    for (const c of E.cellsOf(v)) G.grid[c.y * G.cols + c.x] = -1;
-  }
+  const freeBay = () => G.bays.findIndex((b) => b.kind === 'normal' && b.vid < 0);
+  const lockedBay = () => G.bays.findIndex((b) => b.kind === 'locked');
 
   function tapVehicle(v) {
-    if (v.state !== 'lot' || v.bump) return;
-    if (G.crane) { craneLift(v); return; }
+    if (!inLot(v) || v.bump) return;
+    if (G.vip) { vipLift(v); return; }
     const block = firstBlocker(v);
     if (block) {
-      v.bump = { t: 0, dist: block.dist + 0.14 };
+      v.bump = { t: 0, dist: block.dist + 0.12 };
       const other = G.vehicles[block.id];
       setTimeout(() => { other.shake = 0.35; }, (block.dist / 10) * 1000);
       S.play('blocked', 0.7);
@@ -249,10 +295,8 @@
     if (bay < 0) { noBay(); return; }
     G.bays[bay].vid = v.id;
     v.bay = bay;
-    liftFromLot(v);
     v.state = 'drive';
-    v.path = exitPath(v, bay);
-    v.pathIdx = 0;
+    v.leg = 'out';
     S.play('go', 0.7);
     S.vibrate(12);
   }
@@ -260,89 +304,62 @@
   function noBay() {
     G.bayFlash = 0.8;
     S.play('nobay');
-    toast('Alle Haltebuchten sind belegt!');
+    toast('Keine Bucht frei!');
   }
 
-  function exitPath(v, bay) {
-    const c = lotCenter(v), b = bayCenter(bay);
-    const top = -0.5, bottom = G.rows + 0.5, left = -0.5, right = G.cols + 0.5;
-    const pts = [];
-    if (v.dir === 0) pts.push({ x: c.x, y: top });
-    else if (v.dir === 2) {
-      const side = c.x < G.cols / 2 ? left : right;
-      pts.push({ x: c.x, y: bottom }, { x: side, y: bottom }, { x: side, y: top });
-    } else {
-      const side = v.dir === 3 ? left : right;
-      pts.push({ x: side, y: c.y }, { x: side, y: top });
-    }
-    pts.push({ x: b.x, y: top }, { x: b.x, y: b.y });
-    return pts;
-  }
-
-  function craneLift(v) {
-    const bay = freeBay();
-    if (bay < 0) { noBay(); return; }
-    save.boosters.crane--;
+  function vipLift(v) {
+    if (G.bays[0].vid >= 0) { toast('Die VIP-Bucht ist besetzt'); setVip(false); return; }
+    save.boosters.vip--;
     persist();
-    setCrane(false);
+    setVip(false);
     renderBoosters();
-    G.bays[bay].vid = v.id;
-    v.bay = bay;
-    liftFromLot(v);
+    G.bays[0].vid = v.id;
+    v.bay = 0;
     v.state = 'drive';
-    v.fly = true;
-    const b = bayCenter(bay);
-    v.path = [{ x: b.x, y: b.y }];
-    v.pathIdx = 0;
+    v.leg = 'fly';
     S.play('booster');
   }
 
-  function departPath(v) {
-    const b = bayCenter(v.bay);
-    return [{ x: b.x, y: -0.5 }, { x: G.cols + 3, y: -0.5 }];
-  }
-
   // ---------- Booster ----------
-  function setCrane(on) {
-    if (G) G.crane = on;
-    $('#crane-banner').hidden = !on;
-    $('[data-action="crane"]').classList.toggle('active', on);
+  function setVip(on) {
+    if (G) G.vip = on;
+    $('#vip-banner').hidden = !on;
+    $('[data-action="vip"]').classList.toggle('active', on);
   }
   function useBay() {
-    if (!G || G.extraUsed) { toast('Die Extra-Bucht ist schon offen'); return false; }
+    const i = G ? lockedBay() : -1;
+    if (i < 0) { toast('Alle Extra-Buchten sind schon offen'); return false; }
     if (save.boosters.bay <= 0) { toast('Keine Extra-Buchten mehr – löse Level für Nachschub!'); return false; }
     save.boosters.bay--;
-    G.extraUsed = true;
-    G.bays.push({ vid: -1 });
+    G.bays[i].kind = 'normal';
     persist();
     renderBoosters();
     S.play('booster');
     return true;
   }
-  function useCrane() {
+  function useVip() {
     if (!G || G.over) return;
-    if (G.crane) { setCrane(false); return; }
-    if (save.boosters.crane <= 0) { toast('Kein Kran mehr – löse Level für Nachschub!'); return; }
-    if (freeBay() < 0) { noBay(); return; }
-    setCrane(true);
+    if (G.vip) { setVip(false); return; }
+    if (save.boosters.vip <= 0) { toast('Kein VIP mehr – löse Level für Nachschub!'); return; }
+    if (G.bays[0].vid >= 0) { toast('Die VIP-Bucht ist besetzt'); return; }
+    setVip(true);
     S.play('click');
   }
-  /** Fahrgäste, die in die geparkten Fahrzeuge passen, nach vorne holen. */
-  /** Wartende in Einstiegsreihenfolge (abwechselnd aus beiden Zuläufen). */
+  /** Wartende in Einstiegsreihenfolge (nach seq aus beiden Zuläufen). */
   function armOrder() {
-    const out = [], a = G.arms;
-    for (let k = 0; k < Math.max(a[0].length, a[1].length); k++) {
-      const first = a[G.nextArm][k], second = a[1 - G.nextArm][k];
-      if (first !== undefined) out.push(first);
-      if (second !== undefined) out.push(second);
+    const out = [], a = [G.arms[0].slice(), G.arms[1].slice()];
+    let take = G.takeCount;
+    for (let g = G.seqIdx; g < G.seq.length; g++) {
+      for (let k = take; k < E.GROUP && a[G.seq[g]].length; k++) out.push(a[G.seq[g]].shift());
+      take = 0;
     }
     return out;
   }
   /** Belegte Rundweg-Plätze, die als Nächstes am Ausgang vorbeikommen, zuerst. */
   function slotsByExit() {
     const { P, sp } = G.loop;
-    return G.slots.map((c, k) => k).filter((k) => G.slots[k] >= 0)
-      .sort((x, y) => (P - (G.phase + x * sp) % P) % P - (P - (G.phase + y * sp) % P) % P);
+    const dist = (k) => (P - (G.phase + Math.floor(k / LOOP_LANES) * sp) % P) % P;
+    return G.slots.map((c, k) => k).filter((k) => G.slots[k] >= 0).sort((x, y) => dist(x) - dist(y));
   }
   /** Alle Wartenden (Rundweg ab Ausgang, dann Zuläufe) aufgeteilt in „passt gerade“ und den Rest. */
   function sortGain() {
@@ -359,12 +376,16 @@
     const { all, front, rest } = sortGain();
     const after = front.concat(rest);
     if (!front.length || after.every((c, k) => c === all[k])) { toast('Sortieren bringt gerade nichts'); return false; }
-    // in die Rundweg-Plätze (nächste am Ausgang zuerst), der Rest abwechselnd in die Zuläufe
+    // in die Rundweg-Plätze (nächste am Ausgang zuerst), der Rest gruppenweise in die Zuläufe
     const order = slotsByExit();
     order.forEach((k, j) => { G.slots[k] = after[j]; });
-    const arms = [[], []];
-    after.slice(order.length).forEach((c, j) => arms[j % 2 === 0 ? G.nextArm : 1 - G.nextArm].push(c));
-    G.arms = arms;
+    // Rest wieder in Vierergruppen (die letzte darf kleiner sein)
+    const rest4 = after.slice(order.length), groups = [];
+    for (let j = 0; j < rest4.length; j += E.GROUP) groups.push(rest4[j]);
+    const split = splitArms(groups, G.lvl.arms);
+    split.arms = [[], []];
+    groups.forEach((_, g) => { for (const c of rest4.slice(g * E.GROUP, g * E.GROUP + E.GROUP)) split.arms[split.seq[g]].push(c); });
+    G.arms = split.arms; G.seq = split.seq; G.seqIdx = 0; G.takeCount = 0;
     save.boosters.sort--;
     persist();
     renderBoosters();
@@ -374,12 +395,15 @@
 
   // ---------- Spielschleife ----------
   let lastT = 0;
+  let speed = 1; // nur für Tests schneller
   function frame(t) {
     const dt = Math.min(0.05, (t - lastT) / 1000 || 0);
     lastT = t;
-    if (G && current === 'game') { update(dt); draw(); }
+    if (G && current === 'game') { for (let k = 0; k < speed; k++) update(dt); draw(); }
     requestAnimationFrame(frame);
   }
+
+  const canBoardColor = (c) => G.vehicles.some((v) => v.state === 'parked' && v.color === c && v.reserved < v.cap);
 
   function update(dt) {
     G.time += dt;
@@ -392,23 +416,18 @@
         b.off = b.t < t1 ? b.t * 10 : Math.max(0, b.dist - (b.t - t1) * 5);
         if (b.t > t1 && b.off <= 0) v.bump = null;
       }
-      if ((v.state === 'drive' || v.state === 'leave') && v.path) followPath(v, dt);
-      if (v.state === 'leave') {
-        v.scale = Math.min(1, v.scale + dt * 2);
-        if (v.px > G.cols + 0.5) v.alpha = Math.max(0, v.alpha - dt * 4);
-        if (v.pathIdx >= v.path.length) v.alpha = 0;
-        if (v.alpha <= 0) { v.state = 'gone'; v.path = null; }
-      }
+      if (v.state === 'drive') moveDrive(v, dt);
+      else if (v.state === 'leave') moveLeave(v, dt);
     }
     // Rundweg dreht sich; an den Zuläufen steigen Wartende zu, am Ausgang aus
     if (!G.over) {
       const { P, sp } = G.loop, adv = LOOP_SPEED * G.unit * dt;
       const prev = G.phase;
       G.phase = (G.phase + adv) % P;
-      const crossed = (point, k) => ((point - (prev + k * sp)) % P + 2 * P) % P < adv;
+      const crossed = (point, row) => ((point - (prev + row * sp)) % P + 2 * P) % P < adv;
       for (let k = 0; k < G.slots.length; k++) {
-        const c = G.slots[k];
-        if (c >= 0 && crossed(0, k)) {
+        const c = G.slots[k], row = Math.floor(k / LOOP_LANES);
+        if (c >= 0 && crossed(0, row)) {
           let target = null;
           for (const v of G.vehicles) {
             if (v.state === 'parked' && v.color === c && v.reserved < v.cap && (!target || v.arrived < target.arrived)) target = v;
@@ -416,28 +435,29 @@
           if (target) {
             target.reserved++;
             G.slots[k] = -1;
-            G.walkers.push({ color: c, from: loopPoint(0), vid: target.id, t: 0 });
+            G.walkers.push({ color: c, from: lanePoint(0, k % LOOP_LANES), vid: target.id, t: -(k % LOOP_LANES) * 0.08 });
           }
         } else if (c < 0) {
-          for (const side of [0, 1]) {
-            if (!crossed(mergeS(side), k) || !G.arms[side].length) continue;
-            if (side !== G.nextArm && G.arms[G.nextArm].length) continue;
+          const side = G.seq[G.seqIdx];
+          if (side !== undefined && G.arms[side].length && crossed(mergeS(side), row)) {
             G.slots[k] = G.arms[side].shift();
-            G.armShift[side] = ARM_SP;
-            G.nextArm = 1 - side;
-            break;
+            G.armTaken[side]++;
+            if (++G.takeCount >= E.GROUP || !G.arms[side].length) { G.takeCount = 0; G.seqIdx++; }
           }
         }
       }
     }
-    for (const side of [0, 1]) G.armShift[side] = Math.max(0, G.armShift[side] - dt * 3);
+    for (const side of [0, 1]) {
+      const diff = G.armTaken[side] - G.armSmooth[side];
+      G.armSmooth[side] += diff * Math.min(1, dt * 6);
+    }
     for (const w of G.walkers) {
       w.t += dt / WALK_TIME;
       if (w.t >= 1 && !w.done) {
         w.done = true;
         const v = G.vehicles[w.vid];
         v.seats++;
-        S.play('board', 0.35);
+        if (v.seats % 2 === 0) S.play('board', 0.25);
         if (v.seats >= v.cap) depart(v);
       }
     }
@@ -452,42 +472,71 @@
       setTimeout(showWin, 250);
       return;
     }
-    const canBoard = G.slots.some((c) => c >= 0 && G.vehicles.some((v) => v.state === 'parked' && v.color === c && v.reserved < v.cap));
+    const canBoard = G.slots.some((c) => c >= 0 && canBoardColor(c));
     const canEnter = G.slots.includes(-1) && (G.arms[0].length || G.arms[1].length);
+    // Gesichter über der Menge, wenn es stockt
+    const blocked = !canBoard && freeBay() < 0 && G.slots.some((c) => c >= 0);
+    G.mood = Math.max(0, Math.min(1, G.mood + (blocked ? dt * 2 : -dt * 3)));
     if (!busy && !canBoard && !canEnter && freeBay() < 0 && passengersLeft()) {
       G.stuck += dt;
-      if (G.stuck > 0.6) { G.over = true; showFail(); }
+      if (G.stuck > 1.5) { G.over = true; showFail(); }
     } else G.stuck = 0;
   }
 
   function depart(v) {
     v.state = 'leave';
     G.bays[v.bay].vid = -1;
-    v.path = departPath(v);
-    v.pathIdx = 0;
+    v.leg = 'down';
     S.play('depart', 0.6);
     S.vibrate(15);
   }
 
-  function followPath(v, dt) {
-    let dist = DRIVE_SPEED * dt * (v.fly ? 0.8 : 1);
-    while (dist > 0 && v.pathIdx < v.path.length) {
-      const p = v.path[v.pathIdx];
-      const dx = p.x - v.px, dy = p.y - v.py, len = Math.hypot(dx, dy);
-      if (len > 1e-4 && !v.fly) turnTo(v, Math.atan2(dx, -dy), dt);
-      if (len <= dist) { v.px = p.x; v.py = p.y; dist -= len; v.pathIdx++; }
-      else { v.px += dx / len * dist; v.py += dy / len * dist; dist = 0; }
-    }
-    if (v.state === 'drive') {
-      // in der Bucht kleiner werden und nach oben ausrichten
-      const b = bayCenter(v.bay);
-      const near = Math.max(0, 1 - Math.abs(v.py - b.y) / 1.6);
-      v.scale = 1 + (parkScale(v) - 1) * (v.fly ? Math.max(-0.3, 1 - Math.hypot(v.px - b.x, v.py - b.y) / 6) : near);
-      if (v.fly) turnTo(v, 0, dt);
-      if (v.pathIdx >= v.path.length) {
-        v.state = 'parked'; v.path = null; v.fly = false; v.ang = 0; v.scale = parkScale(v);
-        v.arrived = G.time;
+  /** Ausparken: geradeaus vom Parkplatz, dann von unten in die Bucht (oder per VIP direkt hinüber). */
+  function moveDrive(v, dt) {
+    const b = bayCenter(v.bay);
+    if (v.leg === 'out') {
+      const d = E.dirOf(v.ang), step = DRIVE_SPEED * dt;
+      v.px += d.x * step; v.py += d.y * step;
+      const out = Math.max(-0.2 - v.px, v.px - G.w - 0.2, -0.2 - v.py, v.py - G.h - 0.2);
+      if (out > 0) v.alpha = Math.max(0, 1 - out / 1.2);
+      if (v.alpha <= 0) {
+        v.leg = 'in';
+        v.ang = 0; v.scale = parkScale(v);
+        v.px = b.x; v.py = b.y + 1.1;
       }
+      return;
+    }
+    if (v.leg === 'fly') {
+      turnTo(v, 0, dt);
+      const dx = b.x - v.px, dy = b.y - v.py, len = Math.hypot(dx, dy), step = DRIVE_SPEED * 0.8 * dt;
+      v.scale = parkScale(v) + (1.15 - parkScale(v)) * Math.min(1, len / 4);
+      if (len <= step) arrive(v); else { v.px += dx / len * step; v.py += dy / len * step; }
+      return;
+    }
+    // 'in': einblenden und hochfahren
+    v.alpha = Math.min(1, v.alpha + dt * 6);
+    v.py -= DRIVE_SPEED * 0.5 * dt;
+    if (v.py <= b.y) arrive(v);
+  }
+  function arrive(v) {
+    const b = bayCenter(v.bay);
+    v.state = 'parked'; v.leg = null; v.ang = 0; v.alpha = 1;
+    v.px = b.x; v.py = b.y; v.scale = parkScale(v);
+    v.arrived = G.time;
+  }
+  /** Abfahrt: aus der Bucht nach unten, dann nach rechts aus dem Bild. */
+  function moveLeave(v, dt) {
+    const step = DRIVE_SPEED * 0.8 * dt, laneY = -0.5;
+    v.scale = Math.min(1, v.scale + dt * 2);
+    if (v.leg === 'down') {
+      turnTo(v, Math.PI, dt);
+      v.py += step;
+      if (v.py >= laneY) { v.py = laneY; v.leg = 'right'; }
+    } else {
+      turnTo(v, Math.PI / 2, dt);
+      v.px += step * 1.3;
+      if (v.px > G.w + 0.5) v.alpha = Math.max(0, v.alpha - dt * 4);
+      if (v.alpha <= 0) v.state = 'gone';
     }
   }
   function turnTo(v, target, dt) {
@@ -501,9 +550,9 @@
   // ---------- Sieg / Niederlage ----------
   function showWin() {
     const n = G.spec.number;
-    const kinds = ['bay', 'crane', 'sort'];
+    const kinds = ['bay', 'vip', 'sort'];
     const kind = kinds[n % 3];
-    const names = { bay: 'Extra-Bucht', crane: 'Kran', sort: 'Sortieren' };
+    const names = { bay: 'Extra-Bucht', vip: 'VIP', sort: 'Sortieren' };
     let reward = '';
     if (n >= save.level) {
       save.level = n + 1;
@@ -520,7 +569,7 @@
   function showFail() {
     S.play('fail');
     $('#toast').hidden = true;
-    const canBay = !G.extraUsed && save.boosters.bay > 0;
+    const canBay = lockedBay() >= 0 && save.boosters.bay > 0;
     const sortHelps = save.boosters.sort > 0 && sortGain().front.length > 0;
     $('#fail-bay').hidden = !canBay;
     $('#fail-sort').hidden = !sortHelps;
@@ -554,12 +603,13 @@
   const ctx = canvas.getContext('2d');
   let view = { s: 40, ox: 0, oy: 0, dpr: 1 };
   const dark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : { matches: false };
-  const PAL_LIGHT = { walk: '#eadfce', walkEdge: '#cdb99f', road: '#5d6472', lane: 'rgba(255,255,255,.55)', lot: '#717a8a', lotLine: 'rgba(255,255,255,.13)', bay: '#666e7d', bayLine: 'rgba(255,255,255,.75)', grass: '#9fd18b' };
-  const PAL_DARK = { walk: '#4a3f38', walkEdge: '#2c2521', road: '#2c313a', lane: 'rgba(255,255,255,.35)', lot: '#3c4250', lotLine: 'rgba(255,255,255,.08)', bay: '#353b47', bayLine: 'rgba(255,255,255,.5)', grass: '#3d5a36' };
+  const PAL_LIGHT = { walk: '#eadfce', walkEdge: '#cdb99f', road: '#5d6472', lane: 'rgba(255,255,255,.55)', lot: '#c9ced8', lotEdge: '#b3b9c5', bay: '#666e7d', bayLine: 'rgba(255,255,255,.75)', grass: '#9fd18b' };
+  const PAL_DARK = { walk: '#4a3f38', walkEdge: '#2c2521', road: '#2c313a', lane: 'rgba(255,255,255,.35)', lot: '#3a404d', lotEdge: '#30353f', bay: '#353b47', bayLine: 'rgba(255,255,255,.5)', grass: '#3d5a36' };
   const pal = () => (dark.matches ? PAL_DARK : PAL_LIGHT);
 
   function worldBounds() {
-    return { x0: -1, x1: G.cols + 1, y0: loopCenter().y - G.loop.b - (ARM_H + 0.2) * G.unit, y1: G.rows + 1 };
+    const tops = usedArms().map((s) => armPath(s)[armPath(s).length - 1].y);
+    return { x0: -1, x1: G.w + 1, y0: Math.min(...tops) - 0.2 * G.unit, y1: G.h + 0.5 };
   }
   function resize() {
     if (!G) return;
@@ -572,6 +622,7 @@
     const b = worldBounds();
     const s = Math.min(box.width / (b.x1 - b.x0), box.height / (b.y1 - b.y0));
     view = { s, dpr, ox: (box.width - (b.x1 - b.x0) * s) / 2 - b.x0 * s, oy: (box.height - (b.y1 - b.y0) * s) / 2 - b.y0 * s };
+    spriteCache.clear();
   }
   window.addEventListener('resize', resize);
 
@@ -593,144 +644,183 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(s * dpr, 0, 0, s * dpr, ox * dpr, oy * dpr);
-    const P = pal(), cols = G.cols, rows = G.rows;
-    const b = worldBounds();
+    const P = pal(), w = G.w, h = G.h, u = G.unit;
 
-    // Gehwege: zwei Zuläufe, Rundweg, Ausgang zu den Buchten
-    const c0 = loopCenter(), lp = G.loop;
-    const walkway = (w, color) => {
-      ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // Gehwege: Zuläufe, Rundweg, Ausgang zu den Buchten
+    const c0 = loopCenter(), lp = G.loop, band = (LANES * LANE_W + 0.3) * u, loopBand = (LOOP_LANES * LANE_W + 0.36) * u;
+    const walkway = (extra, color) => {
+      ctx.strokeStyle = color; ctx.lineWidth = band + extra; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.beginPath();
-      for (const side of [0, 1]) { const pts = armPath(side); ctx.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y)); }
-      ctx.moveTo(c0.x, c0.y + lp.b); ctx.lineTo(c0.x, -1 - BAY_H + 0.1);
+      for (const side of usedArms()) { const pts = armPath(side); ctx.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y)); }
       ctx.stroke();
+      ctx.lineWidth = loopBand + extra;
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(c0.x - lp.a, c0.y - lp.b, lp.a * 2, lp.b * 2, lp.b); else ctx.rect(c0.x - lp.a, c0.y - lp.b, lp.a * 2, lp.b * 2);
       ctx.stroke();
+      ctx.lineWidth = 0.7 * u + extra;
+      ctx.beginPath(); ctx.moveTo(c0.x, c0.y + lp.b); ctx.lineTo(c0.x, bayTop() + 0.1); ctx.stroke();
     };
-    walkway(0.86 * G.unit, P.walkEdge);
-    walkway(0.74 * G.unit, P.walk);
+    walkway(0.12 * u, P.walkEdge);
+    walkway(0, P.walk);
 
     // Haltebuchten
-    const bayTop = -1 - BAY_H, bw = bayW();
+    const top = bayTop(), bw = bayW();
     ctx.fillStyle = P.bay;
-    ctx.fillRect(-1, bayTop, cols + 2, BAY_H);
-    for (let i = 0; i < nBaysShown(); i++) {
-      const x = -1 + i * bw;
-      const locked = i >= G.bays.length;
-      if (locked) {
+    ctx.fillRect(-1, top, w + 2, BAY_H + 1);
+    G.bays.forEach((bay, i) => {
+      const x = -1 + i * bw, cx = x + bw / 2, cy = bayCenter(i).y;
+      if (bay.kind === 'locked') {
         ctx.fillStyle = 'rgba(0,0,0,.18)';
-        ctx.fillRect(x, bayTop, bw, BAY_H);
-        drawPlusBay(x + bw / 2, bayTop + BAY_H / 2);
+        ctx.fillRect(x, top, bw, BAY_H);
+        drawPlusBay(cx, cy, bw);
+      } else if (bay.kind === 'vip') {
+        ctx.strokeStyle = '#facc15'; ctx.lineWidth = 0.07;
+        rr(x + 0.1, top + 0.12, bw - 0.2, BAY_H - 0.24, 0.12); ctx.stroke();
+        if (bay.vid < 0) {
+          ctx.save(); ctx.translate(cx, cy); ctx.rotate(-Math.PI / 2);
+          ctx.fillStyle = '#facc15'; ctx.font = `900 ${Math.min(0.5, bw * 0.42)}px Nunito, sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('VIP', 0, 0);
+          ctx.restore();
+        }
+      } else {
+        if (G.bayFlash > 0) {
+          ctx.fillStyle = `rgba(239,68,68,${0.35 * Math.abs(Math.sin(G.bayFlash * 10))})`;
+          ctx.fillRect(x, top, bw, BAY_H);
+        }
+        ctx.strokeStyle = P.bayLine; ctx.lineWidth = 0.05;
+        rr(x + 0.1, top + 0.12, bw - 0.2, BAY_H - 0.7, 0.1); ctx.stroke();
       }
-      if (G.bayFlash > 0 && !locked) {
-        ctx.fillStyle = `rgba(239,68,68,${0.35 * Math.abs(Math.sin(G.bayFlash * 10))})`;
-        ctx.fillRect(x, bayTop, bw, BAY_H);
-      }
-      if (i > 0) {
-        ctx.fillStyle = P.bayLine;
-        ctx.fillRect(x - 0.03, bayTop + 0.15, 0.06, BAY_H - 0.3);
-      }
-    }
+    });
 
-    // Straße rund um den Parkplatz
+    // Straße für die Abfahrt und Parkplatz
     ctx.fillStyle = P.road;
-    ctx.fillRect(-1, -1, cols + 2, rows + 2);
-    ctx.strokeStyle = P.lane;
-    ctx.lineWidth = 0.05;
-    ctx.setLineDash([0.3, 0.3]);
-    ctx.strokeRect(-0.5, -0.5, cols + 1, rows + 1);
-    ctx.setLineDash([]);
-    // Parkplatz
+    ctx.fillRect(-1, -1, w + 2, h + 1.5);
+    ctx.fillStyle = P.lotEdge;
+    rr(-0.35, -0.25, w + 0.7, h + 0.6, 0.5); ctx.fill();
     ctx.fillStyle = P.lot;
-    rr(0, 0, cols, rows, 0.15); ctx.fill();
-    ctx.strokeStyle = P.lotLine;
-    ctx.lineWidth = 0.03;
-    ctx.beginPath();
-    for (let x = 1; x < cols; x++) { ctx.moveTo(x, 0.1); ctx.lineTo(x, rows - 0.1); }
-    for (let y = 1; y < rows; y++) { ctx.moveTo(0.1, y); ctx.lineTo(cols - 0.1, y); }
-    ctx.stroke();
+    rr(-0.25, -0.15, w + 0.5, h + 0.4, 0.45); ctx.fill();
 
     // Fahrzeuge: erst Parkplatz und Buchten, dann fahrende obendrauf
     for (const v of G.vehicles) if (v.state === 'lot') drawLotVehicle(v);
-    for (const v of G.vehicles) if (v.state === 'parked') drawVehicle(v, v.px, v.py, v.ang, v.scale, 1);
-    for (const v of G.vehicles) if (v.state === 'drive' || v.state === 'leave') drawVehicle(v, v.px, v.py, v.ang, v.scale * (v.fly ? 1.12 : 1), v.alpha);
+    for (const v of G.vehicles) if (v.state === 'parked') { drawVehicle(v, v.px, v.py, v.ang, v.scale, 1); drawSeatsLeft(v); }
+    for (const v of G.vehicles) if (v.state === 'drive' || v.state === 'leave') drawVehicle(v, v.px, v.py, v.ang, v.scale * (v.leg === 'fly' ? 1.1 : 1), v.alpha);
 
     // Wartende in den Zuläufen (hinterste zuerst, damit die vorderen oben liegen)
-    for (const side of [0, 1]) {
-      const pts = armPath(side), arm = G.arms[side];
-      const total = pts.reduce((acc, p, i) => acc + (i ? Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) : 0), 0);
-      const sp = ARM_SP * G.unit;
-      const show = Math.min(arm.length, Math.floor((total - 0.2 * G.unit) / sp) + 1);
+    const ps = PERSON * u;
+    for (const side of usedArms()) {
+      const pts = armPath(side), arm = G.arms[side], len = pathLen(pts);
+      const lag = G.armTaken[side] - G.armSmooth[side];
+      const maxRows = Math.floor((len - 0.3 * u) / (ARM_SP * u));
+      const show = Math.min(arm.length, Math.max(0, Math.floor(maxRows * LANES - lag)));
       for (let k = show - 1; k >= 0; k--) {
-        const p = alongPath(pts, (0.3 + k * ARM_SP + G.armShift[side]) * G.unit);
-        drawPerson(p.x, p.y, G.lvl.colors[arm[k]], PERSON * G.unit);
+        const gi = G.armTaken[side] + k, row = (k + lag) / LANES;
+        const lane = gi % LANES;
+        const p = alongPath(pts, (0.3 + row * ARM_SP) * u, (lane - (LANES - 1) / 2) * LANE_W * u);
+        drawPerson(p.x, p.y, arm[k], ps);
       }
       if (arm.length > show) {
         const p = pts[pts.length - 1];
-        drawBubble(p.x, p.y + 0.05, '+' + (arm.length - show), G.unit);
+        drawBubble(p.x, p.y + 0.3 * u, '+' + (arm.length - show), u);
       }
     }
-    // Rundweg
+    // Rundweg (nach Höhe sortiert für Tiefe)
+    const crowd = [];
     for (let k = 0; k < G.slots.length; k++) {
       if (G.slots[k] < 0) continue;
-      const p = loopPoint(G.phase + k * G.loop.sp);
-      drawPerson(p.x, p.y, G.lvl.colors[G.slots[k]], PERSON * G.unit);
+      const p = lanePoint(G.phase + Math.floor(k / LOOP_LANES) * G.loop.sp, k % LOOP_LANES);
+      crowd.push([p.y, p.x, G.slots[k]]);
     }
-    for (const w of G.walkers) {
-      const v = G.vehicles[w.vid], t = Math.min(1, w.t);
+    crowd.sort((a, b) => a[0] - b[0]);
+    for (const [y, x, c] of crowd) drawPerson(x, y, c, ps);
+    for (const wk of G.walkers) {
+      if (wk.t < 0) { drawPerson(wk.from.x, wk.from.y, wk.color, ps); continue; }
+      const v = G.vehicles[wk.vid], t = Math.min(1, wk.t);
       const e = t * t * (3 - 2 * t);
-      const x = w.from.x + (v.px - w.from.x) * e, y = w.from.y + (v.py - w.from.y) * e - Math.sin(t * Math.PI) * 0.3;
-      drawPerson(x, y, G.lvl.colors[w.color], PERSON * G.unit * (1 - t * 0.45));
+      const x = wk.from.x + (v.px - wk.from.x) * e, y = wk.from.y + (v.py - wk.from.y) * e - Math.sin(t * Math.PI) * 0.3;
+      drawPerson(x, y, wk.color, ps * (1 - t * 0.4));
     }
+    if (G.mood > 0.05) drawFace(c0.x, c0.y + lp.b - 0.9 * u, u, G.mood);
   }
 
   function drawBubble(x, y, text, u) {
-    ctx.font = `900 ${0.34 * u}px Nunito, sans-serif`;
-    const w = ctx.measureText(text).width + 0.24 * u;
+    ctx.font = `900 ${0.36 * u}px Nunito, sans-serif`;
+    const w = ctx.measureText(text).width + 0.26 * u;
     ctx.fillStyle = 'rgba(30,41,59,.85)';
-    rr(x - w / 2, y - 0.22 * u, w, 0.44 * u, 0.22 * u); ctx.fill();
+    rr(x - w / 2, y - 0.23 * u, w, 0.46 * u, 0.23 * u); ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(text, x, y + 0.01);
   }
+  /** Besorgtes Gesicht über der Menge, wenn niemand einsteigen kann. */
+  function drawFace(x, y, u, a) {
+    const r = 0.32 * u * (0.8 + 0.2 * a), bob = Math.sin(G.time * 6) * 0.05 * u;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(x, y + bob);
+    ctx.fillStyle = '#ffd34d'; ctx.strokeStyle = '#d99a1e'; ctx.lineWidth = 0.05 * u;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#5b3a12';
+    ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.15, r * 0.12, 0, Math.PI * 2); ctx.arc(r * 0.35, -r * 0.15, r * 0.12, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#5b3a12'; ctx.lineWidth = r * 0.12; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, r * 0.55, r * 0.3, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+    ctx.restore();
+  }
 
-  function drawPlusBay(x, y) {
+  function drawPlusBay(x, y, bw) {
     ctx.strokeStyle = 'rgba(255,255,255,.6)';
     ctx.lineWidth = 0.06;
     ctx.setLineDash([0.12, 0.1]);
-    rr(x - 0.4, y - 0.6, 0.8, 1.2, 0.15); ctx.stroke();
+    const wd = Math.min(0.8, bw - 0.3);
+    rr(x - wd / 2, y - 0.65, wd, 1.3, 0.15); ctx.stroke();
     ctx.setLineDash([]);
     ctx.lineWidth = 0.1; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x - 0.17, y); ctx.lineTo(x + 0.17, y); ctx.moveTo(x, y - 0.17); ctx.lineTo(x, y + 0.17); ctx.stroke();
   }
 
+  /** Anzeige der freien Plätze unter einem geparkten Fahrzeug. */
+  function drawSeatsLeft(v) {
+    const color = G.lvl.colors[v.color], b = bayCenter(v.bay);
+    const y = bayTop() + BAY_H - 0.32, text = String(v.cap - v.seats);
+    ctx.font = '900 0.34px Nunito, sans-serif';
+    const wd = Math.max(0.5, ctx.measureText(text).width + 0.22);
+    ctx.fillStyle = color;
+    rr(b.x - wd / 2, y - 0.2, wd, 0.4, 0.12); ctx.fill();
+    ctx.strokeStyle = shade(color, -0.35); ctx.lineWidth = 0.03; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, b.x, y + 0.01);
+  }
+
   function drawLotVehicle(v) {
-    const d = E.DIRS[v.dir];
+    const d = E.dirOf(v.ang);
     let x = v.px, y = v.py;
-    if (v.bump) { x += d.dx * v.bump.off; y += d.dy * v.bump.off; }
-    if (v.shake > 0) { const a = Math.sin(v.shake * 60) * 0.05 * (v.shake / 0.35); x += d.dy * a; y += d.dx * a; }
+    if (v.bump) { x += d.x * v.bump.off; y += d.y * v.bump.off; }
+    if (v.shake > 0) { const a = Math.sin(v.shake * 60) * 0.05 * (v.shake / 0.35); x -= d.y * a; y += d.x * a; }
     drawVehicle(v, x, y, v.ang, 1, 1);
-    if (G.crane) {
+    if (G.vip) {
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 0.07;
       ctx.save(); ctx.translate(x, y); ctx.rotate(v.ang);
-      rr(-0.44, -v.len / 2 + 0.03, 0.88, v.len - 0.06, 0.2); ctx.stroke();
+      rr(-v.width / 2 - 0.05, -v.len / 2 - 0.05, v.width + 0.1, v.len + 0.1, 0.2); ctx.stroke();
       ctx.restore();
     }
   }
 
   function drawVehicle(v, cx, cy, ang, scale, alpha) {
     const color = G.lvl.colors[v.color];
-    const L = v.len - 0.14, W = 0.78, r = v.type === 'car' ? 0.2 : 0.14;
+    const L = v.len - 0.06, W = v.width - 0.04, r = v.type === 'car' ? 0.2 : 0.14;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(cx, cy);
     ctx.rotate(ang);
     ctx.scale(scale, scale);
-    // Schatten
+    // Schatten (fällt immer nach unten rechts)
+    ctx.save();
+    ctx.rotate(-ang);
+    ctx.translate(0.05, 0.09);
+    ctx.rotate(ang);
     ctx.fillStyle = 'rgba(0,0,0,.25)';
-    rr(-W / 2 + 0.04, -L / 2 + 0.08, W, L, r); ctx.fill();
+    rr(-W / 2, -L / 2, W, L, r); ctx.fill();
+    ctx.restore();
     // Karosserie
     ctx.fillStyle = color;
     rr(-W / 2, -L / 2, W, L, r); ctx.fill();
@@ -738,72 +828,83 @@
     ctx.lineWidth = 0.045;
     ctx.stroke();
     // Dach
-    const roofTop = -L / 2 + 0.4, roofBottom = L / 2 - (v.type === 'car' ? 0.34 : 0.12);
+    const roofTop = -L / 2 + 0.36, roofBottom = L / 2 - (v.type === 'car' ? 0.3 : 0.12);
     ctx.fillStyle = shade(color, 0.22);
     rr(-W / 2 + 0.1, roofTop, W - 0.2, roofBottom - roofTop, 0.1); ctx.fill();
     // Scheiben: vorne groß, hinten klein (zeigt die Fahrtrichtung)
     ctx.fillStyle = 'rgba(30,41,59,.85)';
-    rr(-W / 2 + 0.09, -L / 2 + 0.14, W - 0.18, 0.22, 0.07); ctx.fill();
-    if (v.type === 'car') { rr(-W / 2 + 0.13, L / 2 - 0.3, W - 0.26, 0.15, 0.05); ctx.fill(); }
+    rr(-W / 2 + 0.09, -L / 2 + 0.12, W - 0.18, 0.2, 0.07); ctx.fill();
+    if (v.type === 'car') { rr(-W / 2 + 0.13, L / 2 - 0.26, W - 0.26, 0.13, 0.05); ctx.fill(); }
     else {
       ctx.fillStyle = 'rgba(30,41,59,.55)';
-      for (let y = roofTop + 0.12; y < roofBottom - 0.25; y += 0.42) {
-        ctx.fillRect(-W / 2 + 0.02, y, 0.07, 0.28);
-        ctx.fillRect(W / 2 - 0.09, y, 0.07, 0.28);
+      for (let y = roofTop + 0.1; y < roofBottom - 0.22; y += 0.36) {
+        ctx.fillRect(-W / 2 + 0.02, y, 0.07, 0.24);
+        ctx.fillRect(W / 2 - 0.09, y, 0.07, 0.24);
       }
     }
     // Scheinwerfer
     ctx.fillStyle = '#fff7c2';
-    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sx * W * 0.3, -L / 2 + 0.06, 0.055, 0, Math.PI * 2); ctx.fill(); }
-    if (v.state === 'lot') {
+    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sx * W * 0.3, -L / 2 + 0.05, 0.05, 0, Math.PI * 2); ctx.fill(); }
+    if (v.state === 'lot' || (v.state === 'drive' && v.leg === 'out')) {
       // großer Pfeil in Fahrtrichtung
-      const my = (roofTop + roofBottom) / 2, al = Math.min(0.95, roofBottom - roofTop + 0.1);
-      const tip = my - al / 2, base = tip + 0.3, tail = my + al / 2;
+      const my = (roofTop + roofBottom) / 2, al = Math.min(0.9, roofBottom - roofTop + 0.1);
+      const tip = my - al / 2, base = tip + 0.28, tail = my + al / 2;
       ctx.beginPath();
-      ctx.moveTo(0, tip); ctx.lineTo(0.27, base); ctx.lineTo(0.1, base); ctx.lineTo(0.1, tail);
-      ctx.lineTo(-0.1, tail); ctx.lineTo(-0.1, base); ctx.lineTo(-0.27, base); ctx.closePath();
+      ctx.moveTo(0, tip); ctx.lineTo(0.26, base); ctx.lineTo(0.09, base); ctx.lineTo(0.09, tail);
+      ctx.lineTo(-0.09, tail); ctx.lineTo(-0.09, base); ctx.lineTo(-0.26, base); ctx.closePath();
       ctx.lineJoin = 'round';
       ctx.lineWidth = 0.07; ctx.strokeStyle = 'rgba(15,23,42,.75)'; ctx.stroke();
       ctx.fillStyle = '#ffffff'; ctx.fill();
-    } else {
-      // Sitzplätze
-      const rowsN = v.cap / 2, top = roofTop + 0.16, bottom = roofBottom - 0.16;
-      const step = rowsN > 1 ? (bottom - top) / (rowsN - 1) : 0;
-      for (let k = 0; k < v.cap; k++) {
-        const sx = (k % 2 ? 1 : -1) * 0.16, sy = top + Math.floor(k / 2) * step;
-        ctx.beginPath(); ctx.arc(sx, sy, 0.105, 0, Math.PI * 2);
-        if (k < v.seats) { ctx.fillStyle = '#ffd9b3'; ctx.fill(); ctx.strokeStyle = shade(color, -0.45); ctx.lineWidth = 0.035; ctx.stroke(); }
-        else { ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fill(); }
+    } else if (v.seats > 0) {
+      // Füllstand: Köpfe auf dem Dach
+      const n = Math.min(v.seats, 12), cols = 2, rowsN = Math.ceil(12 / cols);
+      const stepY = (roofBottom - roofTop - 0.2) / Math.max(1, rowsN - 1);
+      for (let k = 0; k < Math.ceil(n * 12 / v.cap) && k < 12; k++) {
+        const sx = (k % 2 ? 1 : -1) * 0.15, sy = roofBottom - 0.1 - Math.floor(k / 2) * stepY;
+        ctx.fillStyle = '#ffd9b3'; ctx.beginPath(); ctx.arc(sx, sy, 0.085, 0, Math.PI * 2); ctx.fill();
       }
     }
     ctx.restore();
   }
 
-  /** Fahrgast leicht von oben/vorne: Schatten, glänzender Körper, Kopf mit Haaren. */
-  function drawPerson(x, y, color, scale) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
-    ctx.fillStyle = 'rgba(0,0,0,.28)';
-    ctx.beginPath(); ctx.ellipse(0, 0.2, 0.19, 0.07, 0, 0, Math.PI * 2); ctx.fill();
-    // Körper
-    let g = ctx.createRadialGradient(-0.07, -0.02, 0.02, 0, 0.06, 0.24);
+  /*
+   * Fahrgäste als vorgerenderte Bildchen je Farbe (viele hundert pro Bild):
+   * Schatten, glänzender Körper, Kopf mit Haaren – leicht von oben/vorne.
+   */
+  const spriteCache = new Map();
+  function personSprite(color, size) {
+    const px = Math.max(8, Math.round(size * view.s * view.dpr));
+    const key = color + px;
+    let img = spriteCache.get(key);
+    if (img) return img;
+    img = document.createElement('canvas');
+    img.width = img.height = px;
+    const g2 = img.getContext('2d');
+    g2.translate(px / 2, px * 0.55);
+    g2.scale(px / 0.6, px / 0.6);
+    g2.fillStyle = 'rgba(0,0,0,.28)';
+    g2.beginPath(); g2.ellipse(0, 0.2, 0.19, 0.07, 0, 0, Math.PI * 2); g2.fill();
+    let g = g2.createRadialGradient(-0.07, -0.02, 0.02, 0, 0.06, 0.24);
     g.addColorStop(0, shade(color, 0.45)); g.addColorStop(0.55, color); g.addColorStop(1, shade(color, -0.3));
-    ctx.fillStyle = g;
-    rr(-0.16, -0.06, 0.32, 0.29, [0.15, 0.15, 0.1, 0.1]); ctx.fill();
-    ctx.strokeStyle = shade(color, -0.45); ctx.lineWidth = 0.025; ctx.stroke();
-    // Kopf
-    g = ctx.createRadialGradient(-0.045, -0.2, 0.01, 0, -0.15, 0.15);
+    g2.fillStyle = g;
+    g2.beginPath();
+    if (g2.roundRect) g2.roundRect(-0.16, -0.06, 0.32, 0.29, [0.15, 0.15, 0.1, 0.1]); else g2.rect(-0.16, -0.06, 0.32, 0.29);
+    g2.fill();
+    g2.strokeStyle = shade(color, -0.45); g2.lineWidth = 0.025; g2.stroke();
+    g = g2.createRadialGradient(-0.045, -0.2, 0.01, 0, -0.15, 0.15);
     g.addColorStop(0, '#ffeedd'); g.addColorStop(0.6, '#ffd2a8'); g.addColorStop(1, '#e0a77c');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, -0.15, 0.13, 0, Math.PI * 2); ctx.fill();
-    // Haare
-    ctx.fillStyle = '#5a3a2a';
-    ctx.beginPath(); ctx.arc(0, -0.16, 0.135, Math.PI * 1.05, Math.PI * 1.95); ctx.quadraticCurveTo(0, -0.2, -0.13, -0.18); ctx.fill();
-    // Augen
-    ctx.fillStyle = '#2b2b33';
-    ctx.beginPath(); ctx.arc(-0.045, -0.13, 0.018, 0, Math.PI * 2); ctx.arc(0.045, -0.13, 0.018, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    g2.fillStyle = g;
+    g2.beginPath(); g2.arc(0, -0.15, 0.13, 0, Math.PI * 2); g2.fill();
+    g2.fillStyle = '#5a3a2a';
+    g2.beginPath(); g2.arc(0, -0.16, 0.135, Math.PI * 1.05, Math.PI * 1.95); g2.quadraticCurveTo(0, -0.2, -0.13, -0.18); g2.fill();
+    g2.fillStyle = '#2b2b33';
+    g2.beginPath(); g2.arc(-0.045, -0.13, 0.018, 0, Math.PI * 2); g2.arc(0.045, -0.13, 0.018, 0, Math.PI * 2); g2.fill();
+    spriteCache.set(key, img);
+    return img;
+  }
+  function drawPerson(x, y, c, size) {
+    const color = typeof c === 'number' ? G.lvl.colors[c] : c;
+    ctx.drawImage(personSprite(color, size), x - size / 2, y - size * 0.55, size, size);
   }
 
   // ---------- Eingabe ----------
@@ -812,19 +913,20 @@
     if (!G || G.over) return;
     const r = canvas.getBoundingClientRect();
     const wx = (e.clientX - r.left - view.ox) / view.s, wy = (e.clientY - r.top - view.oy) / view.s;
-    let cx = Math.floor(wx), cy = Math.floor(wy);
-    // etwas Toleranz am Rand
-    if (wx < 0 && wx > -0.3) cx = 0;
-    if (wy < 0 && wy > -0.3) cy = 0;
-    if (cx < 0 || cy < 0 || cx >= G.cols || cy >= G.rows) {
-      if (wy < -1 && wy > -1 - BAY_H) {
-        const i = Math.floor((wx + 1) / bayW());
-        if (i >= G.bays.length && i < nBaysShown()) useBay();
-      }
+    if (wy < -1 && wy > bayTop()) {
+      const i = Math.floor((wx + 1) / bayW()), bay = G.bays[i];
+      if (bay && bay.kind === 'locked') useBay();
+      else if (bay && bay.kind === 'vip' && bay.vid < 0) useVip();
       return;
     }
-    const id = G.grid[cy * G.cols + cx];
-    if (id >= 0) tapVehicle(G.vehicles[id]);
+    // das getroffene Fahrzeug, bei mehreren das mit der nächsten Mitte
+    let best = null, bestD = Infinity;
+    for (const v of G.vehicles) {
+      if (!inLot(v) || !E.pointIn(v, wx, wy, 0.12)) continue;
+      const d = Math.hypot(v.x - wx, v.y - wy);
+      if (d < bestD) { bestD = d; best = v; }
+    }
+    if (best) tapVehicle(best);
   });
 
   // ---------- Einstellungen ----------
@@ -856,7 +958,7 @@
     retry: () => { hideSticky(); startLevel(G.spec.number); },
     'restart-level': () => { closeDialogs(); startLevel(G.spec.number); },
     bay: () => { if (G && !G.over) useBay(); },
-    crane: useCrane,
+    vip: useVip,
     sort: useSort,
     'fail-bay': () => { if (useBay()) resume(); },
     'fail-sort': () => { if (useSort()) resume(); },
@@ -877,7 +979,7 @@
     S.unlock();
     const fn = actions[b.dataset.action];
     if (fn) {
-      if (!['bay', 'crane', 'sort'].includes(b.dataset.action)) S.play('click', 0.6);
+      if (!['bay', 'vip', 'sort'].includes(b.dataset.action)) S.play('click', 0.6);
       fn(b);
     }
   });
@@ -885,7 +987,7 @@
     if (e.target === o && !o.classList.contains('sticky')) closeDialogs();
   }));
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (G && G.crane) setCrane(false); closeDialogs(); }
+    if (e.key === 'Escape') { if (G && G.vip) setVip(false); closeDialogs(); }
   });
   document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -898,7 +1000,7 @@
 
   // für Tests
   window.__bus = {
-    get G() { return G; }, levelSpec, startLevel,
+    get G() { return G; }, levelSpec, startLevel, setSpeed(n) { speed = n; }, freeBay: () => freeBay(), armOrder: () => armOrder(),
     toScreen(x, y) { const r = canvas.getBoundingClientRect(); return [r.left + view.ox + x * view.s, r.top + view.oy + y * view.s]; }
   };
 

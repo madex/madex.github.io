@@ -56,7 +56,7 @@
 
       <div class="stage-wrap" id="stage-wrap">
         <canvas id="stage"></canvas>
-        <div class="crane-banner" id="crane-banner" hidden>Tippe ein Fahrzeug an – der Kran hebt es heraus</div>
+        <div class="crane-banner" id="vip-banner" hidden>Tippe ein Fahrzeug an – es kommt sofort in die VIP-Bucht</div>
       </div>
 
       <div class="toolbar">
@@ -65,10 +65,10 @@
           <span class="badge" id="badge-bay">0</span>
           <span class="tool-label">Bucht +1</span>
         </button>
-        <button class="tool" data-action="crane" aria-label="Kran">
-          <span class="tool-icon"><img src="assets/img/crane.svg" alt=""></span>
-          <span class="badge" id="badge-crane">0</span>
-          <span class="tool-label">Kran</span>
+        <button class="tool" data-action="vip" aria-label="VIP">
+          <span class="tool-icon"><img src="assets/img/vip.svg" alt=""></span>
+          <span class="badge" id="badge-vip">0</span>
+          <span class="tool-label">VIP</span>
         </button>
         <button class="tool" data-action="sort" aria-label="Sortieren">
           <span class="tool-icon"><img src="assets/img/sort.svg" alt=""></span>
@@ -124,14 +124,14 @@
         <button class="dlg-close" data-action="close-dialog" aria-label="Schließen">✕</button>
         <h3>So wird gespielt</h3>
         <ol>
-          <li><b>Tippe ein Fahrzeug an.</b> Es fährt in Pfeilrichtung los – aber nur, wenn der Weg frei ist.</li>
-          <li><b>Es parkt in einer Haltebucht.</b> Die Fahrgäste steigen der Reihe nach ein, aber nur in ihre Farbe.</li>
+          <li><b>Tippe ein Fahrzeug an.</b> Es fährt geradeaus in Pfeilrichtung los – aber nur, wenn kein anderes im Weg steht.</li>
+          <li><b>Es parkt in einer Haltebucht.</b> Die Fahrgäste laufen im Kreis und steigen am Ausgang ein – nur in ihre Farbe.</li>
           <li><b>Voll? Dann fährt es ab</b> und die Bucht wird wieder frei.</li>
-          <li><b>Achtung:</b> Sind alle Buchten belegt und der vorderste Fahrgast findet keinen Platz, gibt es Stau.</li>
+          <li><b>Achtung:</b> Sind alle Buchten belegt und im Kreis passt niemand in ein geparktes Fahrzeug, gibt es Stau.</li>
         </ol>
         <div class="help-boosters">
-          <p><img src="assets/img/bay.svg" alt=""> <b>Bucht +1</b>: eine zusätzliche Haltebucht</p>
-          <p><img src="assets/img/crane.svg" alt=""> <b>Kran</b>: hebt ein eingeparktes Fahrzeug heraus</p>
+          <p><img src="assets/img/bay.svg" alt=""> <b>Bucht +1</b>: öffnet eine gesperrte Haltebucht (bis zu 3)</p>
+          <p><img src="assets/img/vip.svg" alt=""> <b>VIP</b>: ein beliebiges Fahrzeug – auch ein zugeparktes – kommt in die VIP-Bucht</p>
           <p><img src="assets/img/sort.svg" alt=""> <b>Sortieren</b>: wer in ein geparktes Fahrzeug passt, kommt nach vorne</p>
         </div>
         <button class="btn-primary" data-action="close-dialog">Los geht's!</button>

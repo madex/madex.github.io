@@ -1,5 +1,5 @@
 /* BusFieber – Service Worker für Offline-Nutzung */
-const CACHE = 'busfieber-v1';
+const CACHE = 'busfieber-v2';
 const FILES = [
   './',
   'index.html',
@@ -13,7 +13,7 @@ const FILES = [
   'assets/img/back.svg',
   'assets/img/bay.svg',
   'assets/img/bus.svg',
-  'assets/img/crane.svg',
+  'assets/img/vip.svg',
   'assets/img/hero.svg',
   'assets/img/icon-192.png',
   'assets/img/icon-512.png',
