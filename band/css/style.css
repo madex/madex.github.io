@@ -1165,34 +1165,3 @@ button[name=backSite] {
   border-radius: 8px;
 }
 
-/* Drummer-gesucht-Overlay */
-.drummerBadge {
-  position: absolute;
-  top: 16%;
-  right: 5%;
-  z-index: 5;
-  display: inline-block;
-  padding: 12px 28px;
-  background: #F4591E;
-  color: #1A1B1D;
-  font-size: 1.3rem;
-  font-weight: 900;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  white-space: nowrap;
-  transform: rotate(-10deg);
-  border-radius: 4px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-  transition: transform 0.25s ease;
-}
-.drummerBadge:hover {
-  transform: rotate(-10deg) scale(1.08);
-}
-@media screen and (max-width: 800px) {
-  .drummerBadge {
-    top: 13%;
-    right: 4%;
-    padding: 9px 18px;
-    font-size: 1rem;
-  }
-}
