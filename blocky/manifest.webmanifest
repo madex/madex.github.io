@@ -8,9 +8,9 @@
   "theme_color": "#1E2A5A",
   "icons": [
     {
-      "src": "./blocky-icon.jpg",
+      "src": "./blocky-icon.webp",
       "sizes": "1024x1024",
-      "type": "image/jpeg",
+      "type": "image/webp",
       "purpose": "any maskable"
     }
   ]
