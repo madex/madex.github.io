@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#0F172A" />
+  <g transform="translate(256 264)">
+    <!-- Top Face (White / Warm Slate Tiles) -->
+    <polygon points="0,-168 144,-84 0,0 -144,-84" fill="#1E293B" stroke="#0F172A" stroke-width="10" stroke-linejoin="round" />
+    <!-- 2x2 Isometric Grid on Top -->
+    <polygon points="0,-152 64,-115 0,-78 -64,-115" fill="#F8FAFC" />
+    <polygon points="72,-110 132,-76 68,-39 8,-74" fill="#FACC15" />
+    <polygon points="-72,-110 -8,-74 -68,-39 -132,-76" fill="#F8FAFC" />
+    <polygon points="0,-68 60,-34 0,0 -60,-34" fill="#38BDF8" />
+
+    <!-- Left Face (Green / Blue Tiles) -->
+    <polygon points="-144,-84 0,0 0,168 -144,84" fill="#1E293B" stroke="#0F172A" stroke-width="10" stroke-linejoin="round" />
+    <polygon points="-132,-68 -74,-34 -74,28 -132,-6" fill="#16A34A" />
+    <polygon points="-64,-28 -8,4 -8,66 -64,34" fill="#16A34A" />
+    <polygon points="-132,6 -74,40 -74,102 -132,68" fill="#2563EB" />
+    <polygon points="-64,46 -8,78 -8,140 -64,108" fill="#16A34A" />
+
+    <!-- Right Face (Red / Orange Tiles) -->
+    <polygon points="0,0 144,-84 144,84 0,168" fill="#1E293B" stroke="#0F172A" stroke-width="10" stroke-linejoin="round" />
+    <polygon points="8,4 64,-28 64,34 8,66" fill="#DC2626" />
+    <polygon points="74,-34 132,-68 132,-6 74,28" fill="#F97316" />
+    <polygon points="8,78 64,46 64,108 8,140" fill="#DC2626" />
+    <polygon points="74,40 132,6 132,68 74,102" fill="#FACC15" />
+  </g>
+</svg>
