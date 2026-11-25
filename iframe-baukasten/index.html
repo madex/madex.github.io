@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Iframe-Baukasten – TabSlice-Embeds bauen und prüfen</title>
+<meta name="description" content="TabSlice- und andere Notenplayer als Iframe zusammenstellen, live prüfen und als HTML kopieren.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f4591e'/%3E%3Crect x='7' y='9' width='18' height='3' rx='1.5' fill='%23fff'/%3E%3Crect x='7' y='15' width='18' height='3' rx='1.5' fill='%23fff'/%3E%3Crect x='7' y='21' width='11' height='3' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  *, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1b1d;
+    --panel: #222327;
+    --panel-2: #26272b;
+    --line: #34353b;
+    --text: #fefefe;
+    --muted: #9fa0ac;
+    --accent: #f4591e;
+    --ok: #43b581;
+    --warn: #e0a63c;
+    --bad: #e05c5c;
+  }
+
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--muted);
+    min-height: 100dvh;
+    padding: 48px 20px 80px;
+    line-height: 1.5;
+  }
+
+  header { max-width: 1200px; margin: 0 auto 36px; }
+  h1 {
+    color: var(--text);
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    letter-spacing: 1.5px;
+    text-align: center;
+  }
+  .separator { width: 80px; height: 2px; background: var(--accent); margin: 20px auto 18px; }
+  header p { text-align: center; font-size: 0.95rem; max-width: 680px; margin: 0 auto; }
+  header p a { color: var(--accent); }
+
+  main { max-width: 1200px; margin: 0 auto; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+  }
+  .panel > h2 {
+    color: var(--text);
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .panel > .sub { font-size: 0.82rem; margin-bottom: 16px; }
+
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 0.76rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #c3c4cd;
+    margin-bottom: 5px;
+  }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    background: #16171a;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px 10px;
+    font: inherit;
+    font-size: 0.86rem;
+  }
+  textarea { resize: vertical; min-height: 74px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.78rem; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid rgba(244, 89, 30, 0.45); outline-offset: 1px; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .mini-chips { display: flex; gap: 4px; margin-top: 6px; }
+  .chip.tiny { padding: 3px 7px; font-size: 0.71rem; }
+
+  fieldset {
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 12px 12px 4px;
+    margin: 16px 0 6px;
+  }
+  legend {
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 0 6px;
+  }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.84rem;
+    color: #c3c4cd;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .check input { accent-color: var(--accent); width: 15px; height: 15px; }
+
+  button {
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 9px 14px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #ff6a2c; }
+  button.ghost { background: transparent; }
+  button.small { padding: 5px 9px; font-size: 0.76rem; font-weight: 500; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+  /* Vorschau */
+  .preview-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .preview-toolbar .url {
+    flex: 1 1 220px;
+    min-width: 0;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.72rem;
+    color: #c3c4cd;
+    background: #16171a;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .viewport-tag {
+    font-size: 0.72rem;
+    color: var(--muted);
+    border: 1px dashed var(--line);
+    border-radius: 6px;
+    padding: 4px 8px;
+  }
+
+  #previewStage {
+    background: #2b2c31;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    overflow: auto;
+    min-height: 320px;
+  }
+  #previewStage .archive-frame { margin: 0 auto; }
+  #previewStage .empty {
+    color: #77787f;
+    text-align: center;
+    padding: 80px 10px;
+    font-size: 0.88rem;
+  }
+
+  /* Rahmen wie im Archiv */
+  .archive-frame { max-width: 750px; width: 100%; margin: 30px auto; }
+  .archive-frame iframe {
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    background: #fff;
+  }
+  .bare-frame iframe { width: 100%; border: none; background: #fff; }
+
+  /* Prüfliste */
+  .checks { list-style: none; display: grid; gap: 6px; margin-top: 14px; }
+  .checks li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.82rem;
+    background: #1b1c20;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 8px 10px;
+  }
+  .checks .mark { font-weight: 700; flex-shrink: 0; width: 14px; }
+  .checks .ok .mark { color: var(--ok); }
+  .checks .bad .mark { color: var(--bad); }
+  .checks .warn .mark { color: var(--warn); }
+  .checks .info .mark { color: var(--muted); }
+  .checks small { display: block; color: #77787f; font-size: 0.75rem; }
+
+  /* Code */
+  pre.code {
+    background: #16171a;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    overflow-x: auto;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.75rem;
+    color: #cfd0d8;
+    white-space: pre;
+    margin-top: 14px;
+    max-height: 260px;
+  }
+
+  /* Liste */
+  .list-panel { margin-top: 20px; }
+  .entries { display: grid; gap: 10px; margin-top: 14px; }
+  .entry {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 10px 12px;
+  }
+  .entry .meta { flex: 1 1 200px; min-width: 0; }
+  .entry .name { color: var(--text); font-size: 0.9rem; font-weight: 600; }
+  .entry .detail {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.72rem;
+    color: #85868f;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .entry .badge {
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: var(--muted);
+  }
+  .entry .controls { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .empty-hint { font-size: 0.84rem; color: #77787f; padding: 6px 0; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 9px 18px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  footer { max-width: 1200px; margin: 48px auto 0; text-align: center; font-size: 0.82rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Iframe-Baukasten</h1>
+  <div class="separator"></div>
+  <p>
+    Notenplayer als Iframe zusammenstellen, live prüfen und als HTML kopieren &ndash; so wie im
+    <em>Practice-Session</em>-Beitrag (<code>max-width: 750px</code>, 420 px hoch, Radius 8 px, Schatten).
+  </p>
+</header>
+
+<main>
+  <div class="layout">
+
+    <!-- Baukasten -->
+    <section class="panel">
+      <h2>Neues Iframe</h2>
+      <p class="sub">URL einfügen, Parameter setzen, hinzufügen.</p>
+
+      <div class="chips" id="presets">
+        <button class="chip" type="button" data-preset="static">TabSlice static</button>
+        <button class="chip" type="button" data-preset="nas">TabSlice NAS</button>
+        <button class="chip" type="button" data-preset="soundslice">Soundslice</button>
+        <button class="chip" type="button" data-preset="youtube">YouTube</button>
+      </div>
+
+      <div class="field">
+        <label for="f-name">Name</label>
+        <input type="text" id="f-name" placeholder="z. B. Sesamstraße · Bass" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="f-url">URL</label>
+        <input type="text" id="f-url" placeholder="https://…/slices/<id>/embed/" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="f-width">Breite</label>
+          <input type="text" id="f-width" value="100%" autocomplete="off">
+          <div class="mini-chips" id="widthChips">
+            <button class="chip tiny" type="button" data-width="100%">100%</button>
+            <button class="chip tiny" type="button" data-width="390px">390</button>
+            <button class="chip tiny" type="button" data-width="430px">430</button>
+            <button class="chip tiny" type="button" data-width="750px">750</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-height">Höhe (px)</label>
+          <input type="number" id="f-height" value="420" min="120" max="2000" step="10">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-frame">Rahmen</label>
+        <select id="f-frame">
+          <option value="archive">Wie im Archiv (Karte, 750 px, Schatten)</option>
+          <option value="bare">Ohne Rahmen</option>
+        </select>
+      </div>
+
+      <fieldset>
+        <legend>TabSlice-Parameter</legend>
+
+        <div class="row">
+          <div class="field">
+            <label for="f-layout">Layout</label>
+            <select id="f-layout">
+              <option value="">automatisch</option>
+              <option value="horizontal">horizontal (Streifen)</option>
+              <option value="page">page (Seiten)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-header">Kopfzeile</label>
+            <select id="f-header">
+              <option value="">an</option>
+              <option value="0">aus</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="f-stave">Notensystem</label>
+            <select id="f-stave">
+              <option value="">Standard</option>
+              <option value="scoretab">Noten + TAB</option>
+              <option value="tab">nur TAB</option>
+              <option value="score">nur Noten</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-sf">SoundFont</label>
+            <select id="f-sf">
+              <option value="">Standard</option>
+              <option value="generaluser">GeneralUser</option>
+              <option value="fluidr3">FluidR3</option>
+              <option value="musescore">MuseScore</option>
+              <option value="sonivox">Sonivox</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="f-countin">Einzähler</label>
+            <select id="f-countin">
+              <option value="">Standard</option>
+              <option value="off">aus</option>
+              <option value="first">1×</option>
+              <option value="always">immer</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-speed">Tempo (%)</label>
+            <input type="number" id="f-speed" value="100" min="25" max="200" step="5">
+          </div>
+        </div>
+
+        <label class="check"><input type="checkbox" id="f-dark"> Dunkles Notenblatt</label>
+        <label class="check"><input type="checkbox" id="f-metronome"> Metronom an</label>
+        <label class="check"><input type="checkbox" id="f-loop"> Schleife an</label>
+        <label class="check"><input type="checkbox" id="f-fretboard"> Griffbrett an</label>
+        <label class="check"><input type="checkbox" id="f-autoplay"> <code>allow="autoplay"</code> setzen</label>
+      </fieldset>
+
+      <div class="actions">
+        <button class="primary" type="button" id="btn-add">Hinzufügen</button>
+        <button class="ghost" type="button" id="btn-preview">Vorschau</button>
+      </div>
+    </section>
+
+    <!-- Vorschau -->
+    <section class="panel">
+      <h2>Live-Vorschau</h2>
+      <p class="sub">Echtes Iframe in Originalgröße. „Prüfen“ liest die Seite aus, wenn sie von hier aus erreichbar ist.</p>
+
+      <div class="preview-toolbar">
+        <div class="url" id="previewUrl">noch nichts ausgewählt</div>
+        <button class="ghost small" type="button" id="btn-reload">Neu laden</button>
+        <button class="primary small" type="button" id="btn-check">Prüfen</button>
+        <button class="ghost small" type="button" id="btn-open">Neuer Tab</button>
+      </div>
+
+      <div id="previewStage">
+        <div class="empty">Links ein Iframe zusammenstellen und „Vorschau“ oder „Hinzufügen“ drücken.</div>
+      </div>
+
+      <ul class="checks" id="checkList"></ul>
+      <pre class="code" id="codeOut" hidden></pre>
+      <div class="actions" id="codeActions" hidden>
+        <button class="primary" type="button" id="btn-copy">Iframe-Code kopieren</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Liste -->
+  <section class="panel list-panel">
+    <h2>Angelegte Iframes</h2>
+    <p class="sub" id="listSub">Noch keine Einträge – sie werden im Browser gespeichert.</p>
+    <div class="entries" id="entries"></div>
+    <div class="actions">
+      <button class="ghost" type="button" id="btn-export">Als Testseite exportieren</button>
+      <button class="ghost" type="button" id="btn-clear">Liste leeren</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><a href="/list.html">← Alle Projekte</a></p>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'madex:iframe-baukasten:v1';
+  var DEFAULT_HEIGHT = 420;
+
+  var PRESETS = {
+    static: {
+      name: 'TabSlice static · Demo',
+      url: 'https://exposed-to-reality.de/tabslice-static/#embed=1&header=0&layout=horizontal&demo=ensemble',
+      height: 420
+    },
+    nas: {
+      name: 'TabSlice NAS · Demo',
+      url: 'https://tabslice.exposed-to-reality.de/?embed=1&demo=ensemble',
+      height: 500
+    },
+    soundslice: {
+      name: 'Soundslice · Archiv-Beispiel',
+      url: 'https://www.soundslice.com/slices/sL7Bc/embed/',
+      height: 420
+    },
+    youtube: {
+      name: 'YouTube · Video',
+      url: 'https://www.youtube-nocookie.com/embed/uPHi5xn_q5c',
+      height: 420
+    }
+  };
+
+  var state = { items: [], previewId: null };
+  var nextId = 1;
+
+  // ---------- Elemente ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    name: $('f-name'), url: $('f-url'), width: $('f-width'), height: $('f-height'),
+    frame: $('f-frame'), layout: $('f-layout'), header: $('f-header'), stave: $('f-stave'),
+    sf: $('f-sf'), countin: $('f-countin'), speed: $('f-speed'),
+    dark: $('f-dark'), metronome: $('f-metronome'), loop: $('f-loop'),
+    fretboard: $('f-fretboard'), autoplay: $('f-autoplay'),
+    stage: $('previewStage'), previewUrl: $('previewUrl'), checkList: $('checkList'),
+    codeOut: $('codeOut'), codeActions: $('codeActions'),
+    entries: $('entries'), listSub: $('listSub'), toast: $('toast')
+  };
+
+  // ---------- Persistenz ----------
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.items)) {
+        state.items = parsed.items.filter(function (i) { return i && i.url; });
+        var maxId = 0;
+        state.items.forEach(function (i) { maxId = Math.max(maxId, Number(i.id) || 0); });
+        nextId = maxId + 1;
+      }
+    } catch (err) {
+      // Defekte Daten ignorieren
+    }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }));
+    } catch (err) {
+      toast('Speichern nicht möglich (Browser-Speicher voll?)');
+    }
+  }
+
+  // ---------- URL bauen ----------
+  function collectParams() {
+    var p = {};
+    if (el.layout.value) p.layout = el.layout.value;
+    if (el.header.value) p.header = el.header.value;
+    if (el.stave.value) p.stave = el.stave.value;
+    if (el.sf.value) p.sf = el.sf.value;
+    if (el.countin.value) p.countin = el.countin.value;
+
+    var speed = parseInt(el.speed.value, 10);
+    if (!isNaN(speed) && speed !== 100 && speed >= 25 && speed <= 200) p.speed = String(speed);
+
+    if (el.dark.checked) p.dark = '1';
+    if (el.metronome.checked) p.metronome = '1';
+    if (el.loop.checked) p.loop = '1';
+    if (el.fretboard.checked) p.fretboard = '1';
+    return p;
+  }
+
+  /**
+   * TabSlice-Embeds tragen ihre Parameter je nach Variante im Hash
+   * (static: #embed=1&d=…) oder im Query-String (/slices/<id>/embed/?…).
+   * Deshalb wird dort angehängt, wo schon Parameter stehen.
+   */
+  function withParams(rawUrl, params) {
+    var keys = Object.keys(params);
+    if (!keys.length) return rawUrl;
+
+    var hashIndex = rawUrl.indexOf('#');
+    if (hashIndex >= 0) {
+      var base = rawUrl.slice(0, hashIndex);
+      var search = new URLSearchParams(rawUrl.slice(hashIndex + 1));
+      keys.forEach(function (k) { search.set(k, params[k]); });
+      return base + '#' + search.toString();
+    }
+
+    var queryIndex = rawUrl.indexOf('?');
+    var head = queryIndex >= 0 ? rawUrl.slice(0, queryIndex) : rawUrl;
+    var tail = queryIndex >= 0 ? rawUrl.slice(queryIndex + 1) : '';
+    var qs = new URLSearchParams(tail);
+    keys.forEach(function (k) { qs.set(k, params[k]); });
+    return head + '?' + qs.toString();
+  }
+
+  function currentConfig() {
+    var url = el.url.value.trim();
+    if (!url) return null;
+    return {
+      name: el.name.value.trim() || 'Unbenannt',
+      url: withParams(url, collectParams()),
+      width: el.width.value.trim() || '100%',
+      height: Math.max(120, Math.min(2000, parseInt(el.height.value, 10) || DEFAULT_HEIGHT)),
+      frame: el.frame.value,
+      autoplay: el.autoplay.checked
+    };
+  }
+
+  // ---------- Code ----------
+  function allowAttr(cfg) {
+    return cfg.autoplay ? 'autoplay; fullscreen; encrypted-media' : 'fullscreen';
+  }
+
+  function iframeAttrs(cfg) {
+    return 'src="' + escapeAttr(cfg.url) + '" width="' + escapeAttr(cfg.width) + '" height="' +
+      cfg.height + '" frameborder="0" allow="' + allowAttr(cfg) + '" allowfullscreen=""';
+  }
+
+  function escapeAttr(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function snippet(cfg) {
+    if (cfg.frame === 'archive') {
+      return '<div style="max-width: 750px; width: 100%; margin: 30px auto; text-align: center;">\n' +
+        '  <iframe ' + iframeAttrs(cfg) + '\n' +
+        '    style="width: 100%; height: ' + cfg.height + 'px; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">\n' +
+        '  </iframe>\n' +
+        '</div>';
+    }
+    return '<iframe ' + iframeAttrs(cfg) + ' style="width: ' + escapeAttr(cfg.width) + '; border: none;"></iframe>';
+  }
+
+  // ---------- Vorschau ----------
+  function renderPreview(cfg) {
+    el.stage.innerHTML = '';
+
+    var wrapper = document.createElement('div');
+    wrapper.className = cfg.frame === 'archive' ? 'archive-frame' : 'bare-frame';
+    // Bei fester Breite (z. B. 390 px) schrumpft der Rahmen mit, damit er
+    // zentriert steht und den Breakpoint der Zielseite wirklich simuliert.
+    wrapper.style.width = cfg.width === '100%' ? '100%' : cfg.width;
+    wrapper.style.maxWidth = '100%';
+
+    var frame = document.createElement('iframe');
+    frame.id = 'previewFrame';
+    frame.setAttribute('frameborder', '0');
+    frame.setAttribute('allow', allowAttr(cfg));
+    frame.setAttribute('allowfullscreen', '');
+    frame.setAttribute('loading', 'eager');
+    frame.style.height = cfg.height + 'px';
+    frame.style.width = '100%';
+    frame.src = cfg.url;
+
+    wrapper.appendChild(frame);
+    el.stage.appendChild(wrapper);
+
+    el.previewUrl.textContent = cfg.url;
+    el.previewUrl.title = cfg.url;
+
+    el.codeOut.textContent = snippet(cfg);
+    el.codeOut.hidden = false;
+    el.codeActions.hidden = false;
+    el.checkList.innerHTML = '';
+  }
+
+  function stageHeight() {
+    var frame = $('previewFrame');
+    if (!frame) return 0;
+    return frame.getBoundingClientRect().height;
+  }
+
+  // ---------- Prüfung ----------
+  function addCheck(kind, text, detail) {
+    var li = document.createElement('li');
+    li.className = kind;
+    var mark = document.createElement('span');
+    mark.className = 'mark';
+    mark.textContent = kind === 'ok' ? '✓' : kind === 'bad' ? '✕' : kind === 'warn' ? '!' : 'i';
+    var body = document.createElement('div');
+    body.textContent = text;
+    if (detail) {
+      var small = document.createElement('small');
+      small.textContent = detail;
+      body.appendChild(small);
+    }
+    li.appendChild(mark);
+    li.appendChild(body);
+    el.checkList.appendChild(li);
+  }
+
+  function runChecks() {
+    el.checkList.innerHTML = '';
+    var frame = $('previewFrame');
+    if (!frame) {
+      addCheck('info', 'Keine Vorschau geladen.');
+      return;
+    }
+
+    var doc = null;
+    try {
+      doc = frame.contentDocument;
+    } catch (err) {
+      doc = null;
+    }
+
+    if (!doc || !doc.documentElement) {
+      addCheck('info', 'Fremde Domain – Inhalt nicht lesbar.',
+        'Bei gleicher Domain (z. B. exposed-to-reality.de) prüft die Seite selbst.');
+      addCheck('info', 'Iframe-Höhe', Math.round(stageHeight()) + ' px');
+      return;
+    }
+
+    addCheck('ok', 'Eingebettete Seite erreichbar', doc.location ? doc.location.href : '');
+
+    var bodyText = (doc.body && doc.body.innerText) || '';
+    var stillRendering = /Notenblatt wird gerendert/i.test(bodyText);
+    var hasSurface = !!doc.querySelector('.at-surface, canvas, svg.at-surface');
+
+    if (stillRendering) {
+      addCheck('bad', 'Notenblatt hängt bei „wird gerendert“',
+        'Meist fehlt die Musikschrift (fontDirectory) oder alphaTab konnte nicht laden.');
+    } else if (hasSurface) {
+      addCheck('ok', 'Notenblatt gerendert');
+    } else {
+      addCheck('warn', 'Kein Notenblatt gefunden', 'Die Seite ist da, rendert aber nichts – evtl. noch am Laden.');
+    }
+
+    var play = doc.querySelector('button[aria-label="Abspielen"], button[aria-label="Pause"]');
+    if (!play) {
+      addCheck('warn', 'Kein Play-Button gefunden', 'Nicht jede Seite ist ein Player.');
+    } else {
+      var rect = play.getBoundingClientRect();
+      var inView = rect.height > 0 && rect.width > 0 &&
+        rect.top >= -1 && rect.bottom <= (doc.documentElement.clientHeight + 1) &&
+        rect.left >= -1 && rect.right <= (doc.documentElement.clientWidth + 1);
+      if (inView) {
+        addCheck('ok', 'Play-Button vollständig sichtbar',
+          'x ' + Math.round(rect.left) + ', y ' + Math.round(rect.top) +
+          ' · Button ' + Math.round(rect.width) + '×' + Math.round(rect.height) + ' px');
+      } else {
+        addCheck('bad', 'Play-Button liegt außerhalb des sichtbaren Bereichs',
+          'Der Dock ist breiter/höher als der Viewport – auf dem iPhone unerreichbar.');
+      }
+
+      var dock = play.closest('.min-h-13, .min-h-14');
+      if (!dock) {
+        // Der Dock ist die erste vollbreite Hülle oberhalb des Buttons.
+        var targetWidth = doc.documentElement.clientWidth;
+        var cursor = play.parentElement;
+        while (cursor && cursor !== doc.body && cursor !== doc.documentElement) {
+          if (cursor.getBoundingClientRect().width >= targetWidth - 2) { dock = cursor; break; }
+          cursor = cursor.parentElement;
+        }
+      }
+      if (dock) {
+        var dockRect = dock.getBoundingClientRect();
+        var covered = dockRect.bottom - doc.documentElement.clientHeight;
+        addCheck(covered > 1 ? 'bad' : 'info', 'Transport-Dock',
+          Math.round(dockRect.height) + ' px hoch, ' + Math.round(dockRect.bottom) +
+          ' px Unterkante (Viewport ' + doc.documentElement.clientHeight + ' px' +
+          (covered > 1 ? ', ' + Math.round(covered) + ' px abgeschnitten' : '') + ')');
+      }
+    }
+
+    var header = doc.querySelector('header');
+    if (header) {
+      var overflow = header.scrollWidth - header.clientWidth;
+      if (overflow > 2) {
+        addCheck('warn', 'Kopfzeile läuft horizontal über', overflow + ' px Überlauf');
+      } else {
+        addCheck('ok', 'Kopfzeile passt in die Breite');
+      }
+    }
+
+    var scroller = doc.querySelector('.score-scroll');
+    if (scroller) {
+      addCheck('info', 'Noten-Canvas', scroller.scrollWidth + ' px breit bei ' + scroller.clientWidth + ' px Viewport');
+    }
+
+    addCheck('info', 'Iframe-Höhe', Math.round(stageHeight()) + ' px · Viewport der Seite ' +
+      doc.documentElement.clientWidth + '×' + doc.documentElement.clientHeight + ' px');
+  }
+
+  // ---------- Liste ----------
+  function renderList() {
+    el.entries.innerHTML = '';
+
+    if (!state.items.length) {
+      var hint = document.createElement('div');
+      hint.className = 'empty-hint';
+      hint.textContent = 'Noch keine Iframes angelegt.';
+      el.entries.appendChild(hint);
+      el.listSub.textContent = 'Noch keine Einträge – sie werden im Browser gespeichert.';
+      return;
+    }
+
+    el.listSub.textContent = state.items.length + (state.items.length === 1 ? ' Eintrag' : ' Einträge') +
+      ' · im Browser gespeichert';
+
+    state.items.forEach(function (item) {
+      var row = document.createElement('div');
+      row.className = 'entry';
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = item.name;
+
+      var detail = document.createElement('div');
+      detail.className = 'detail';
+      detail.textContent = item.url;
+      detail.title = item.url;
+
+      meta.appendChild(name);
+      meta.appendChild(detail);
+
+      var badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = (item.frame === 'archive' ? 'Karte' : 'nackt') + ' · ' + item.height + ' px';
+
+      var controls = document.createElement('div');
+      controls.className = 'controls';
+
+      var previewBtn = document.createElement('button');
+      previewBtn.type = 'button';
+      previewBtn.className = 'ghost small';
+      previewBtn.textContent = 'Vorschau';
+      previewBtn.addEventListener('click', function () {
+        state.previewId = item.id;
+        renderPreview(item);
+        el.stage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+
+      var copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'ghost small';
+      copyBtn.textContent = 'Code';
+      copyBtn.addEventListener('click', function () {
+        renderPreview(item);
+        copyText(snippet(item), 'Iframe-Code kopiert');
+      });
+
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'ghost small';
+      editBtn.textContent = 'Laden';
+      editBtn.title = 'Werte in den Baukasten übernehmen';
+      editBtn.addEventListener('click', function () {
+        el.name.value = item.name;
+        el.url.value = item.url;
+        el.width.value = item.width;
+        el.height.value = item.height;
+        el.frame.value = item.frame;
+        el.autoplay.checked = !!item.autoplay;
+        toast('Werte übernommen – Parameter bleiben im Feld URL');
+      });
+
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'ghost small';
+      removeBtn.textContent = 'Entfernen';
+      removeBtn.addEventListener('click', function () {
+        state.items = state.items.filter(function (i) { return i.id !== item.id; });
+        if (state.previewId === item.id) {
+          state.previewId = null;
+          el.stage.innerHTML = '<div class="empty">Links ein Iframe zusammenstellen und „Vorschau“ oder „Hinzufügen“ drücken.</div>';
+          el.previewUrl.textContent = 'noch nichts ausgewählt';
+          el.codeOut.hidden = true;
+          el.codeActions.hidden = true;
+          el.checkList.innerHTML = '';
+        }
+        save();
+        renderList();
+      });
+
+      controls.appendChild(previewBtn);
+      controls.appendChild(copyBtn);
+      controls.appendChild(editBtn);
+      controls.appendChild(removeBtn);
+
+      row.appendChild(meta);
+      row.appendChild(badge);
+      row.appendChild(controls);
+      el.entries.appendChild(row);
+    });
+  }
+
+  function addItem() {
+    var cfg = currentConfig();
+    if (!cfg) {
+      toast('Bitte zuerst eine URL eingeben');
+      el.url.focus();
+      return;
+    }
+    if (!/^https?:\/\//i.test(cfg.url)) {
+      toast('URL muss mit http:// oder https:// beginnen');
+      return;
+    }
+
+    var item = {
+      id: nextId++,
+      name: cfg.name,
+      url: cfg.url,
+      width: cfg.width,
+      height: cfg.height,
+      frame: cfg.frame,
+      autoplay: cfg.autoplay
+    };
+    state.items.push(item);
+    state.previewId = item.id;
+    save();
+    renderList();
+    renderPreview(item);
+    toast('Iframe hinzugefügt');
+  }
+
+  // ---------- Export ----------
+  function exportPage() {
+    if (!state.items.length) {
+      toast('Erst Iframes anlegen');
+      return;
+    }
+
+    var blocks = state.items.map(function (item) {
+      var title = escapeHtml(item.name);
+      if (item.frame === 'archive') {
+        return '  <h2>' + title + '</h2>\n' +
+          '  <div style="max-width: 750px; width: 100%; margin: 20px auto 40px; text-align: center;">\n' +
+          '    <iframe ' + iframeAttrs(item) +
+          '\n      style="width: 100%; height: ' + item.height + 'px; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);"></iframe>\n' +
+          '  </div>';
+      }
+      return '  <h2>' + title + '</h2>\n' +
+        '  <iframe ' + iframeAttrs(item) + ' style="border: none; margin-bottom: 40px;"></iframe>';
+    }).join('\n\n');
+
+    var html = '<!DOCTYPE html>\n<html lang="de">\n<head>\n<meta charset="UTF-8">\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">\n' +
+      '<title>Iframe-Testseite</title>\n<style>\n' +
+      'body { font-family: "Helvetica Neue", Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px 20px; color: #222; }\n' +
+      'h1 { font-size: 1.4rem; }\nh2 { font-size: 1rem; color: #555; margin-top: 40px; }\n' +
+      '</style>\n</head>\n<body>\n  <h1>Iframe-Testseite</h1>\n\n' + blocks +
+      '\n</body>\n</html>\n';
+
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'iframe-testseite.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    toast('Testseite exportiert');
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ---------- Kleinkram ----------
+  function copyText(text, message) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast(message);
+      }, function () {
+        fallbackCopy(text, message);
+      });
+    } else {
+      fallbackCopy(text, message);
+    }
+  }
+
+  function fallbackCopy(text, message) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      toast(message);
+    } catch (err) {
+      toast('Kopieren nicht möglich');
+    }
+    document.body.removeChild(ta);
+  }
+
+  var toastTimer = null;
+  function toast(message) {
+    el.toast.textContent = message;
+    el.toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.classList.remove('show'); }, 1800);
+  }
+
+  // ---------- Events ----------
+  document.getElementById('presets').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-preset]');
+    if (!btn) return;
+    var preset = PRESETS[btn.getAttribute('data-preset')];
+    if (!preset) return;
+    el.name.value = preset.name;
+    el.url.value = preset.url;
+    el.height.value = preset.height;
+    el.width.value = '100%';
+    el.frame.value = 'archive';
+    renderPreview(currentConfig());
+  });
+
+  $('btn-add').addEventListener('click', addItem);
+
+  document.getElementById('widthChips').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-width]');
+    if (!btn) return;
+    el.width.value = btn.getAttribute('data-width');
+    var cfg = currentConfig();
+    if (cfg) renderPreview(cfg);
+  });
+
+  $('btn-preview').addEventListener('click', function () {
+    var cfg = currentConfig();
+    if (!cfg) {
+      toast('Bitte zuerst eine URL eingeben');
+      el.url.focus();
+      return;
+    }
+    renderPreview(cfg);
+  });
+
+  $('btn-reload').addEventListener('click', function () {
+    var cfg = currentConfig();
+    if (!cfg) {
+      toast('Bitte zuerst eine URL eingeben');
+      return;
+    }
+    renderPreview(cfg);
+    el.checkList.innerHTML = '';
+  });
+
+  $('btn-check').addEventListener('click', runChecks);
+
+  $('btn-open').addEventListener('click', function () {
+    var cfg = currentConfig();
+    if (!cfg) return;
+    window.open(cfg.url, '_blank', 'noopener');
+  });
+
+  $('btn-copy').addEventListener('click', function () {
+    if (!el.codeOut.textContent) return;
+    copyText(el.codeOut.textContent, 'Iframe-Code kopiert');
+  });
+
+  $('btn-export').addEventListener('click', exportPage);
+
+  $('btn-clear').addEventListener('click', function () {
+    if (!state.items.length) return;
+    if (!window.confirm('Alle ' + state.items.length + ' Einträge löschen?')) return;
+    state.items = [];
+    state.previewId = null;
+    save();
+    renderList();
+    el.stage.innerHTML = '<div class="empty">Links ein Iframe zusammenstellen und „Vorschau“ oder „Hinzufügen“ drücken.</div>';
+    el.previewUrl.textContent = 'noch nichts ausgewählt';
+    el.codeOut.hidden = true;
+    el.codeActions.hidden = true;
+    el.checkList.innerHTML = '';
+  });
+
+  el.url.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var cfg = currentConfig();
+      if (cfg) renderPreview(cfg);
+    }
+  });
+
+  // ---------- Start ----------
+  load();
+  renderList();
+
+  if (state.items.length) {
+    var last = state.items[state.items.length - 1];
+    el.name.value = last.name;
+    el.url.value = last.url;
+    el.height.value = last.height;
+    el.width.value = last.width;
+    el.frame.value = last.frame;
+    renderPreview(last);
+  }
+})();
+</script>
+
+</body>
+</html>
